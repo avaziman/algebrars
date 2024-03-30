@@ -9,7 +9,7 @@ pub struct TreeNode {
     right: Option<TreeNodeRef>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TreeNodeRef(pub Rc<RefCell<TreeNode>>);
 
 impl PartialEq for TreeNodeRef {
@@ -17,6 +17,12 @@ impl PartialEq for TreeNodeRef {
         self.0.borrow().val == other.0.borrow().val
             && self.0.borrow().left == other.0.borrow().left
             && self.0.borrow().right == other.0.borrow().right
+    }
+}
+
+impl std::fmt::Debug for TreeNodeRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.borrow().fmt(f)
     }
 }
 
@@ -134,6 +140,7 @@ impl AST {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
     use rust_decimal_macros::dec;
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.
@@ -141,8 +148,9 @@ mod tests {
 
     #[test]
     fn rpn() {
+        let lexer = Lexer::new("2 * x");
         assert_eq!(
-            AST::reverse_polish_notation(Lexer::new("2 * x")),
+            AST::reverse_polish_notation(lexer.clone()),
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
@@ -151,7 +159,7 @@ mod tests {
         );
 
         assert_eq!(
-            AST::parse(Lexer::new("2 * x")).root,
+            AST::parse(lexer).root,
             TreeNodeRef::new_vals(
                 MathToken::Op(Operation::Multiply),
                 Some(TreeNodeRef::new_val(MathToken::Constant(dec!(2)))),
@@ -162,8 +170,9 @@ mod tests {
 
     #[test]
     fn rpn_precedence() {
+        let lexer = Lexer::new("2 * x + 1");
         assert_eq!(
-            AST::reverse_polish_notation(Lexer::new("2 * x + 1")),
+            AST::reverse_polish_notation(lexer.clone()),
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
@@ -171,6 +180,19 @@ mod tests {
                 MathToken::Constant(dec!(1)),
                 MathToken::Op(Operation::Add),
             ]
+        );
+
+        assert_eq!(
+            AST::parse(lexer).root,
+            TreeNodeRef::new_vals(
+                MathToken::Op(Operation::Add),
+                Some(TreeNodeRef::new_vals(
+                    MathToken::Op(Operation::Multiply),
+                    Some(TreeNodeRef::new_val(MathToken::Constant(dec!(2)))),
+                    Some(TreeNodeRef::new_val(MathToken::Variable("x".to_string())))
+                )),
+                Some(TreeNodeRef::new_val(MathToken::Constant(dec!(1)))),
+            )
         );
     }
 
@@ -208,8 +230,9 @@ mod tests {
 
     #[test]
     fn rpn_precedence_double_parentheses() {
+        let lexer = Lexer::new("2 * (4 + (x + 1))");
         assert_eq!(
-            AST::reverse_polish_notation(Lexer::new("2 * (4 + (x + 1))")),
+            AST::reverse_polish_notation(lexer.clone()),
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Constant(dec!(4)),
@@ -219,6 +242,23 @@ mod tests {
                 MathToken::Op(Operation::Add),
                 MathToken::Op(Operation::Multiply),
             ]
+        );
+
+        assert_eq!(
+            AST::parse(lexer).root,
+            TreeNodeRef::new_vals(
+                MathToken::Op(Operation::Multiply),
+                Some(TreeNodeRef::new_val(MathToken::Constant(dec!(2)))),
+                Some(TreeNodeRef::new_vals(
+                    MathToken::Op(Operation::Add),
+                    Some(TreeNodeRef::new_val(MathToken::Constant(dec!(4)))),
+                    Some(TreeNodeRef::new_vals(
+                        MathToken::Op(Operation::Add),
+                        Some(TreeNodeRef::new_val(MathToken::Variable("x".to_string()))),
+                        Some(TreeNodeRef::new_val(MathToken::Constant(dec!(1)))),
+                    ))
+                )),
+            )
         );
     }
 }

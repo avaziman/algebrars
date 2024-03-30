@@ -24,7 +24,7 @@ impl Operation {
             Operation::Multiply | Operation::Divide => 2,
             Operation::Pow | Operation::Root => 3,
             Operation::FractionDivide => todo!(),
-            Operation::LParent | Operation::RParent => todo!(),
+            Operation::LParent | Operation::RParent => unreachable!(),
         }
     }
 }

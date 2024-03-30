@@ -4,7 +4,7 @@ use rust_decimal::Decimal;
 
 use crate::{MathToken, Operation};
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Lexer {
     pub(crate) tokens: Vec<MathToken>,
 }
