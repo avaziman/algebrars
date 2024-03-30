@@ -9,30 +9,67 @@ pub struct TreeNode {
     right: Option<TreeNodeRef>,
 }
 
-type TreeNodeRef = Rc<RefCell<TreeNode>>;
+#[derive(Debug, Clone)]
+pub struct TreeNodeRef(pub Rc<RefCell<TreeNode>>);
 
-impl TreeNode {
-    pub fn new_val(token: MathToken) -> TreeNodeRef {
-        Rc::new(RefCell::new(Self {
-            val: token,
-            left: None,
-            right: None,
-        }))
+impl PartialEq for TreeNodeRef {
+    fn eq(&self, other: &TreeNodeRef) -> bool {
+        self.0.borrow().val == other.0.borrow().val
+            && self.0.borrow().left == other.0.borrow().left
+            && self.0.borrow().right == other.0.borrow().right
     }
 }
 
+impl TreeNodeRef {
+    pub fn new_val(token: MathToken) -> Self {
+        Self(Rc::new(RefCell::new(TreeNode::new_val(token))))
+    }
+
+    pub fn new_vals(
+        token: MathToken,
+        left: Option<TreeNodeRef>,
+        right: Option<TreeNodeRef>,
+    ) -> Self {
+        Self(Rc::new(RefCell::new(TreeNode::new_vals(
+            token, left, right,
+        ))))
+    }
+}
+
+impl TreeNode {
+    pub fn new_val(token: MathToken) -> TreeNode {
+        Self {
+            val: token,
+            left: None,
+            right: None,
+        }
+    }
+
+    pub fn new_vals(
+        token: MathToken,
+        left: Option<TreeNodeRef>,
+        right: Option<TreeNodeRef>,
+    ) -> TreeNode {
+        Self {
+            val: token,
+            left,
+            right,
+        }
+    }
+}
+
+#[derive(Debug)]
 struct AST {
-    node: TreeNode,
+    root: TreeNodeRef,
 }
 
 impl AST {
     pub fn reverse_polish_notation(lexer: Lexer) -> Vec<MathToken> {
         let mut output = Vec::new();
         let mut operators: Vec<Operation> = Vec::new();
-            println!("{:?}!", lexer.tokens);
+        println!("{:?}!", lexer.tokens);
 
         'outer: for token in lexer.tokens.into_iter() {
-            println!("{:?}", token);
             match token {
                 MathToken::Constant(_) | MathToken::Variable(_) => output.push(token),
                 MathToken::Op(op) => {
@@ -66,37 +103,33 @@ impl AST {
         output
     }
 
-    // pub fn parse(lexer: Lexer) -> Self{
-    //     // let mut node = TreeNode {}
-    //     let mut last_token = None;
-    //     let mut token_iter =lexer.tokens.into_iter();
-    //     while let Some(token) = token_iter.next() {
-    //         match token {
-    //             MathToken::Constant(_) | MathToken::Variable(_) => break,
-    //             MathToken::Op(op) => match op {
-    //                 Operation::Minus => todo!(),
-    //                 Operation::Plus => todo!(),
-    //                 Operation::Multiply => {
-    //                     TreeNode {
-    //                         val: MathToken::Op(Operation::Multiply),
-    //                         left: last_token,
-    //                         right: last_token,
-    //                     }
-    //                 },
-    //                 Operation::Divide => todo!(),
-    //                 Operation::FractionDivide => todo!(),
-    //                 Operation::Pow => todo!(),
-    //                 Operation::Root => todo!(),
-    //             },
-    //         }
+    pub fn parse(lexer: Lexer) -> Self {
+        let rpn = Self::reverse_polish_notation(lexer);
+        let mut nodes = Vec::new();
 
-    //         last_token = Some(token);
-    //     }
+        for token in rpn.into_iter() {
+            if let MathToken::Op(_op) = &token {
+                // let mut operand_iter = operator_it.clone().rev();
+                // if node.is_none() {
+                // check if unary op
+                let right = nodes.pop();
+                let left = nodes.pop();
 
-    //     AST {
-    //      node
-    //     }
-    // }
+                nodes.push(TreeNodeRef::new_vals(token, left, right))
+
+                //     node = Some(TreeNode::new_vals(token, left, right));
+                // }else {
+
+                // }
+            } else {
+                nodes.push(TreeNodeRef::new_val(token));
+            }
+        }
+
+        AST {
+            root: nodes.pop().unwrap(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -115,6 +148,15 @@ mod tests {
                 MathToken::Variable("x".to_string()),
                 MathToken::Op(Operation::Multiply),
             ]
+        );
+
+        assert_eq!(
+            AST::parse(Lexer::new("2 * x")).root,
+            TreeNodeRef::new_vals(
+                MathToken::Op(Operation::Multiply),
+                Some(TreeNodeRef::new_val(MathToken::Constant(dec!(2)))),
+                Some(TreeNodeRef::new_val(MathToken::Variable("x".to_string())))
+            )
         );
     }
 
@@ -164,7 +206,7 @@ mod tests {
         );
     }
 
-        #[test]
+    #[test]
     fn rpn_precedence_double_parentheses() {
         assert_eq!(
             AST::reverse_polish_notation(Lexer::new("2 * (4 + (x + 1))")),

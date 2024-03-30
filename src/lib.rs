@@ -5,7 +5,7 @@ use rust_decimal::prelude::*;
 
 
 #[derive(Debug, PartialEq, Clone)]
-enum Operation {
+pub enum Operation {
     Subtract,
     Add,
     Multiply,
@@ -31,7 +31,7 @@ impl Operation {
 
 
 #[derive(Debug, PartialEq, Clone)]
-enum MathToken {
+pub enum MathToken {
     Constant(Decimal),
     Variable(String),
     Op(Operation),
