@@ -1,6 +1,6 @@
 use std::{cell::RefCell, io::empty, rc::Rc};
 
-use crate::{lexer::Lexer, MathToken, Operation};
+use crate::{lexer::Lexer, MathToken, OperationToken};
 
 #[derive(Debug, Clone)]
 pub struct TreeNode {
@@ -40,6 +40,18 @@ impl TreeNodeRef {
             token, left, right,
         ))))
     }
+
+    pub fn val(&self) -> MathToken {
+        self.0.borrow().val.clone()
+    }
+
+     pub fn right(&self) -> Option<TreeNodeRef> {
+        self.0.borrow().left.clone()
+    }
+
+        pub fn left(&self) ->  Option<TreeNodeRef> {
+        self.0.borrow().right.clone()
+    }
 }
 
 impl TreeNode {
@@ -64,34 +76,35 @@ impl TreeNode {
     }
 }
 
+// abstract syntax tree
 #[derive(Debug)]
-struct AST {
+pub struct AST {
     root: TreeNodeRef,
 }
 
 impl AST {
     pub fn reverse_polish_notation(lexer: Lexer) -> Vec<MathToken> {
         let mut output = Vec::new();
-        let mut operators: Vec<Operation> = Vec::new();
+        let mut operators: Vec<OperationToken> = Vec::new();
         println!("{:?}!", lexer.tokens);
 
         'outer: for token in lexer.tokens.into_iter() {
             match token {
                 MathToken::Constant(_) | MathToken::Variable(_) => output.push(token),
                 MathToken::Op(op) => {
-                    if op == Operation::RParent {
+                    if op == OperationToken::RParent {
                         while let Some(last_op) = operators.pop() {
-                            if last_op == Operation::LParent {
+                            if last_op == OperationToken::LParent {
                                 continue 'outer;
                             } else {
                                 output.push(MathToken::Op(last_op));
                             }
                         }
                         panic!("Parentheses Mismatch");
-                    } else if op != Operation::LParent {
+                    } else if op != OperationToken::LParent {
                         while let Some(last_op) = operators.last() {
-                            if *last_op != Operation::LParent
-                                && op.precedence() <= last_op.precedence()
+                            if *last_op != OperationToken::LParent
+                                && op.info().precedence <= last_op.info().precedence
                             {
                                 output.push(MathToken::Op(operators.pop().unwrap()));
                             } else {
@@ -154,14 +167,14 @@ mod tests {
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
-                MathToken::Op(Operation::Multiply),
+                MathToken::Op(OperationToken::Multiply),
             ]
         );
 
         assert_eq!(
             AST::parse(lexer).root,
             TreeNodeRef::new_vals(
-                MathToken::Op(Operation::Multiply),
+                MathToken::Op(OperationToken::Multiply),
                 Some(TreeNodeRef::new_val(MathToken::Constant(dec!(2)))),
                 Some(TreeNodeRef::new_val(MathToken::Variable("x".to_string())))
             )
@@ -176,18 +189,18 @@ mod tests {
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
-                MathToken::Op(Operation::Multiply),
+                MathToken::Op(OperationToken::Multiply),
                 MathToken::Constant(dec!(1)),
-                MathToken::Op(Operation::Add),
+                MathToken::Op(OperationToken::Add),
             ]
         );
 
         assert_eq!(
             AST::parse(lexer).root,
             TreeNodeRef::new_vals(
-                MathToken::Op(Operation::Add),
+                MathToken::Op(OperationToken::Add),
                 Some(TreeNodeRef::new_vals(
-                    MathToken::Op(Operation::Multiply),
+                    MathToken::Op(OperationToken::Multiply),
                     Some(TreeNodeRef::new_val(MathToken::Constant(dec!(2)))),
                     Some(TreeNodeRef::new_val(MathToken::Variable("x".to_string())))
                 )),
@@ -203,13 +216,13 @@ mod tests {
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
-                MathToken::Op(Operation::Multiply),
+                MathToken::Op(OperationToken::Multiply),
                 MathToken::Constant(dec!(1)),
                 MathToken::Constant(dec!(3)),
-                MathToken::Op(Operation::Multiply),
-                MathToken::Op(Operation::Add),
+                MathToken::Op(OperationToken::Multiply),
+                MathToken::Op(OperationToken::Add),
                 MathToken::Constant(dec!(4)),
-                MathToken::Op(Operation::Add),
+                MathToken::Op(OperationToken::Add),
             ]
         );
     }
@@ -222,8 +235,8 @@ mod tests {
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
                 MathToken::Constant(dec!(1)),
-                MathToken::Op(Operation::Add),
-                MathToken::Op(Operation::Multiply),
+                MathToken::Op(OperationToken::Add),
+                MathToken::Op(OperationToken::Multiply),
             ]
         );
     }
@@ -231,6 +244,7 @@ mod tests {
     #[test]
     fn rpn_precedence_double_parentheses() {
         let lexer = Lexer::new("2 * (4 + (x + 1))");
+        // 2 * (x + 5)
         assert_eq!(
             AST::reverse_polish_notation(lexer.clone()),
             vec![
@@ -238,22 +252,22 @@ mod tests {
                 MathToken::Constant(dec!(4)),
                 MathToken::Variable("x".to_string()),
                 MathToken::Constant(dec!(1)),
-                MathToken::Op(Operation::Add),
-                MathToken::Op(Operation::Add),
-                MathToken::Op(Operation::Multiply),
+                MathToken::Op(OperationToken::Add),
+                MathToken::Op(OperationToken::Add),
+                MathToken::Op(OperationToken::Multiply),
             ]
         );
 
         assert_eq!(
             AST::parse(lexer).root,
             TreeNodeRef::new_vals(
-                MathToken::Op(Operation::Multiply),
+                MathToken::Op(OperationToken::Multiply),
                 Some(TreeNodeRef::new_val(MathToken::Constant(dec!(2)))),
                 Some(TreeNodeRef::new_vals(
-                    MathToken::Op(Operation::Add),
+                    MathToken::Op(OperationToken::Add),
                     Some(TreeNodeRef::new_val(MathToken::Constant(dec!(4)))),
                     Some(TreeNodeRef::new_vals(
-                        MathToken::Op(Operation::Add),
+                        MathToken::Op(OperationToken::Add),
                         Some(TreeNodeRef::new_val(MathToken::Variable("x".to_string()))),
                         Some(TreeNodeRef::new_val(MathToken::Constant(dec!(1)))),
                     ))

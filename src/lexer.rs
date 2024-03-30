@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use rust_decimal::Decimal;
 
-use crate::{MathToken, Operation};
+use crate::{MathToken, OperationToken};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Lexer {
@@ -33,12 +33,12 @@ impl Lexer {
                     }
                     MathToken::Variable(str[i..str_stop].to_string())
                 }
-                '+' => MathToken::Op(Operation::Add),
-                '-' => MathToken::Op(Operation::Subtract),
-                '/' => MathToken::Op(Operation::Divide),
-                '*' => MathToken::Op(Operation::Multiply),
-                '(' => MathToken::Op(Operation::LParent),
-                ')' => MathToken::Op(Operation::RParent),
+                '+' => MathToken::Op(OperationToken::Add),
+                '-' => MathToken::Op(OperationToken::Subtract),
+                '/' => MathToken::Op(OperationToken::Divide),
+                '*' => MathToken::Op(OperationToken::Multiply),
+                '(' => MathToken::Op(OperationToken::LParent),
+                ')' => MathToken::Op(OperationToken::RParent),
                 _ => panic!("Unhandled char {}", c),
             };
             tokens.push(token);
@@ -61,7 +61,7 @@ mod tests {
             Lexer::new("2 * x").tokens,
             vec![
                 MathToken::Constant(dec!(2)),
-                MathToken::Op(Operation::Multiply),
+                MathToken::Op(OperationToken::Multiply),
                 MathToken::Variable("x".to_string())
             ]
         );
@@ -73,12 +73,12 @@ mod tests {
             Lexer::new("2 * (x + 1)").tokens,
             vec![
                 MathToken::Constant(dec!(2)),
-                MathToken::Op(Operation::Multiply),
-                MathToken::Op(Operation::LParent),
+                MathToken::Op(OperationToken::Multiply),
+                MathToken::Op(OperationToken::LParent),
                 MathToken::Variable("x".to_string()),
-                MathToken::Op(Operation::Add),
+                MathToken::Op(OperationToken::Add),
                 MathToken::Constant(dec!(1)),
-                MathToken::Op(Operation::RParent),
+                MathToken::Op(OperationToken::RParent),
             ]
         );
     }

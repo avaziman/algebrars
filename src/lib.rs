@@ -1,11 +1,13 @@
 pub mod lexer;
 pub mod ast;
+pub mod expand;
+pub mod simplify;
 
 use rust_decimal::prelude::*;
 
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Operation {
+pub enum OperationToken {
     Subtract,
     Add,
     Multiply,
@@ -17,14 +19,25 @@ pub enum Operation {
     RParent,
 }
 
-impl Operation {
-    pub fn precedence(&self) -> u8 {
+
+pub struct OperatorInfo {
+    precedence: i8,
+    orderless: bool,
+    // associativity_left: bool,
+}
+
+
+
+impl OperationToken {
+    pub fn info(&self) -> OperatorInfo {
         match self {
-            Operation::Subtract | Operation::Add => 1,
-            Operation::Multiply | Operation::Divide => 2,
-            Operation::Pow | Operation::Root => 3,
-            Operation::FractionDivide => todo!(),
-            Operation::LParent | Operation::RParent => unreachable!(),
+            OperationToken::Add => OperatorInfo {precedence: 1, orderless: true},
+            OperationToken::Subtract => OperatorInfo {precedence: 1, orderless: false},
+            OperationToken::Multiply => OperatorInfo {precedence: 2, orderless: true},
+            OperationToken::Divide => OperatorInfo {precedence: 2, orderless: false},
+            OperationToken::Pow | OperationToken::Root => OperatorInfo {precedence: 3, orderless: false},
+            OperationToken::FractionDivide => todo!(),
+            OperationToken::LParent | OperationToken::RParent => unreachable!(),
         }
     }
 }
@@ -34,7 +47,7 @@ impl Operation {
 pub enum MathToken {
     Constant(Decimal),
     Variable(String),
-    Op(Operation),
+    Op(OperationToken),
 }
 
 
