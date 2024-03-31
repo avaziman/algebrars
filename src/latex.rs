@@ -56,5 +56,10 @@ mod tests {
 
         assert_eq!(AST::parse(Lexer::new("2 * (x + 1 + (2 + 3))")).to_latex().as_str(), "2*(x+1+2+3)");
 
+
+        assert_eq!(AST::parse(Lexer::new("2 * ((x) + (1) + (2 + 3))")).to_latex().as_str(), "2*(x+1+2+3)");
+
+        assert_eq!(AST::parse(Lexer::new("1 + 5 + 2 * 5 + 3 + 1")).to_latex().as_str(), "1+5+(2*5)+3+1");
+
     }
 }
