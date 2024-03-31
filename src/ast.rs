@@ -123,38 +123,31 @@ impl AST {
                 let op_info = op.info();
                 let mut operands = nodes.split_off(nodes.len() - op_info.arity as usize);
 
-                if op_info.orderless {
-                    let last_operand = operands.iter().position(|t| t.val() == token);
+                if !op_info.orderless {
+                    nodes.push(TreeNodeRef::new_vals(token, operands));
 
-                    if let Some(pos) = last_operand {
-                        let last_operands_node = operands.remove(pos);
+                    continue;
+                }
+                let last_operand = operands.iter().position(|t| t.val() == token);
 
-                        for operand in operands {
-                            if let MathToken::Op(operand_op) = operand.val() {
-                                if *op == operand_op {
-                                    last_operands_node
-                                        .clone()
-                                        .0
-                                        .borrow_mut()
-                                        .childs
-                                        .extend(operand.0.borrow().childs.clone());
-                                    continue;
-                                }
-                            }
+                if let Some(pos) = last_operand {
+                    let last_operands_node = operands.remove(pos);
 
-                            last_operands_node
-                                .clone()
-                                .0
-                                .borrow_mut()
-                                .childs
-                                .push(operand);
+                    for operand in operands {
+                        // compare operators
+                        let mut borrow = last_operands_node.0.borrow_mut();
+
+                        if token == operand.val() {
+                            borrow.childs.extend(operand.0.borrow().childs.clone());
+                        } else {
+                            borrow.childs.push(operand);
                         }
-
-                        nodes.push(last_operands_node);
-                        continue;
                     }
-                } 
-                nodes.push(TreeNodeRef::new_vals(token, operands))
+
+                    nodes.push(last_operands_node);
+                } else {
+                    nodes.push(TreeNodeRef::new_vals(token, operands));
+                }
             } else {
                 nodes.push(TreeNodeRef::new_val(token));
             }
