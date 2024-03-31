@@ -1,3 +1,4 @@
+
 use crate::{ast::{TreeNodeRef, AST}, MathToken, OperationToken};
 
 // since contrary to addition, substraction is not an orderless operation,
@@ -9,22 +10,23 @@ impl AST {
 
     }
 
-    // fn simplify_node(node: TreeNodeRef) {
-    //     if let MathToken::Op(op) = node.val()  {
-    //         let left = node.left();
-    //         let right = node.right();
+    fn simplify_node(node: TreeNodeRef) {
+        if let MathToken::Op(op) = node.val()  {
+            let operands = &node.0.borrow().childs;
 
-    //         match op {
-    //             OperationToken::Subtract => todo!(),
-    //             OperationToken::Add => todo!(),
-    //             OperationToken::Multiply => todo!(),
-    //             OperationToken::Divide => todo!(),
-    //             OperationToken::FractionDivide => todo!(),
-    //             OperationToken::Pow => todo!(),
-    //             OperationToken::Root => todo!(),
-    //             OperationToken::LParent => todo!(),
-    //             OperationToken::RParent => todo!(),
-    //         }
-    //     }
-    // }
+            match op {
+                OperationToken::Subtract => todo!(),
+                OperationToken::Add => {
+                            
+                },
+                OperationToken::Multiply => todo!(),
+                OperationToken::Divide => todo!(),
+                OperationToken::FractionDivide => todo!(),
+                OperationToken::Pow => todo!(),
+                OperationToken::Root => todo!(),
+                OperationToken::LParent => todo!(),
+                OperationToken::RParent => todo!(),
+            }
+        }
+    }
 }
