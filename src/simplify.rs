@@ -9,22 +9,22 @@ impl AST {
 
     }
 
-    fn simplify_node(node: TreeNodeRef) {
-        if let MathToken::Op(op) = node.val()  {
-            let left = node.left();
-            let right = node.right();
-            
-            match op {
-                OperationToken::Subtract => todo!(),
-                OperationToken::Add => todo!(),
-                OperationToken::Multiply => todo!(),
-                OperationToken::Divide => todo!(),
-                OperationToken::FractionDivide => todo!(),
-                OperationToken::Pow => todo!(),
-                OperationToken::Root => todo!(),
-                OperationToken::LParent => todo!(),
-                OperationToken::RParent => todo!(),
-            }
-        }
-    }
+    // fn simplify_node(node: TreeNodeRef) {
+    //     if let MathToken::Op(op) = node.val()  {
+    //         let left = node.left();
+    //         let right = node.right();
+
+    //         match op {
+    //             OperationToken::Subtract => todo!(),
+    //             OperationToken::Add => todo!(),
+    //             OperationToken::Multiply => todo!(),
+    //             OperationToken::Divide => todo!(),
+    //             OperationToken::FractionDivide => todo!(),
+    //             OperationToken::Pow => todo!(),
+    //             OperationToken::Root => todo!(),
+    //             OperationToken::LParent => todo!(),
+    //             OperationToken::RParent => todo!(),
+    //         }
+    //     }
+    // }
 }

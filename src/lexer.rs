@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use bimap::BiMap;
 use rust_decimal::Decimal;
 
 use crate::{MathToken, OperationToken};
@@ -7,6 +8,18 @@ use crate::{MathToken, OperationToken};
 #[derive(Clone, Debug, PartialEq)]
 pub struct Lexer {
     pub(crate) tokens: Vec<MathToken>,
+}
+
+lazy_static::lazy_static! {
+    /// This is an example for using doc comment attributes
+    pub static ref OPERATOR_MAP: BiMap<char, MathToken> = bimap::BiMap::from_iter(vec![
+        ('+' , MathToken::Op(OperationToken::Add)),
+        ('-' , MathToken::Op(OperationToken::Subtract)),
+        ('/' , MathToken::Op(OperationToken::Divide)),
+        ('*' , MathToken::Op(OperationToken::Multiply)),
+        ('(' , MathToken::Op(OperationToken::LParent)),
+        (')' , MathToken::Op(OperationToken::RParent)),
+    ]);
 }
 
 impl Lexer {
@@ -33,13 +46,10 @@ impl Lexer {
                     }
                     MathToken::Variable(str[i..str_stop].to_string())
                 }
-                '+' => MathToken::Op(OperationToken::Add),
-                '-' => MathToken::Op(OperationToken::Subtract),
-                '/' => MathToken::Op(OperationToken::Divide),
-                '*' => MathToken::Op(OperationToken::Multiply),
-                '(' => MathToken::Op(OperationToken::LParent),
-                ')' => MathToken::Op(OperationToken::RParent),
-                _ => panic!("Unhandled char {}", c),
+                _ => match OPERATOR_MAP.get_by_left(&c) {
+                    Some(s) => s.clone(),
+                    None => panic!("Unhandled char {}", c),
+                },
             };
             tokens.push(token);
         }

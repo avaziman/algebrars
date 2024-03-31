@@ -2,11 +2,12 @@ pub mod lexer;
 pub mod ast;
 pub mod expand;
 pub mod simplify;
+pub mod latex;
 
 use rust_decimal::prelude::*;
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum OperationToken {
     Subtract,
     Add,
@@ -21,6 +22,7 @@ pub enum OperationToken {
 
 
 pub struct OperatorInfo {
+    arity: u8,
     precedence: i8,
     orderless: bool,
     // associativity_left: bool,
@@ -31,11 +33,11 @@ pub struct OperatorInfo {
 impl OperationToken {
     pub fn info(&self) -> OperatorInfo {
         match self {
-            OperationToken::Add => OperatorInfo {precedence: 1, orderless: true},
-            OperationToken::Subtract => OperatorInfo {precedence: 1, orderless: false},
-            OperationToken::Multiply => OperatorInfo {precedence: 2, orderless: true},
-            OperationToken::Divide => OperatorInfo {precedence: 2, orderless: false},
-            OperationToken::Pow | OperationToken::Root => OperatorInfo {precedence: 3, orderless: false},
+            OperationToken::Add => OperatorInfo {arity: 2, precedence: 1, orderless: true},
+            OperationToken::Subtract => OperatorInfo {arity: 2, precedence: 1, orderless: false},
+            OperationToken::Multiply => OperatorInfo {arity: 2, precedence: 2, orderless: true},
+            OperationToken::Divide => OperatorInfo {arity: 2, precedence: 2, orderless: false},
+            OperationToken::Pow | OperationToken::Root => OperatorInfo {arity: 2, precedence: 3, orderless: false},
             OperationToken::FractionDivide => todo!(),
             OperationToken::LParent | OperationToken::RParent => unreachable!(),
         }
@@ -43,7 +45,7 @@ impl OperationToken {
 }
 
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum MathToken {
     Constant(Decimal),
     Variable(String),
