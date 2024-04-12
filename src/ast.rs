@@ -349,5 +349,24 @@ mod tests {
                 ],
             )
         );
+
+        let lexer = Lexer::new("2 + 2^2");
+
+        assert_eq!(
+            AST::parse(lexer).root,
+            TreeNodeRef::new_vals(
+                MathToken::Op(OperationToken::Add),
+                vec![
+                    TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
+                    TreeNodeRef::new_vals(
+                        MathToken::Op(OperationToken::Pow),
+                        vec![
+                            TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
+                            TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
+                        ]
+                    )
+                ],
+            )
+        );
     }
 }

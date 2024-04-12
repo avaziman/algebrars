@@ -17,6 +17,7 @@ lazy_static::lazy_static! {
         ('-' , MathToken::Op(OperationToken::Subtract)),
         ('/' , MathToken::Op(OperationToken::Divide)),
         ('*' , MathToken::Op(OperationToken::Multiply)),
+        ('^' , MathToken::Op(OperationToken::Pow)),
         ('(' , MathToken::Op(OperationToken::LParent)),
         (')' , MathToken::Op(OperationToken::RParent)),
     ]);
@@ -91,5 +92,6 @@ mod tests {
                 MathToken::Op(OperationToken::RParent),
             ]
         );
+        
     }
 }

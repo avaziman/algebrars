@@ -20,7 +20,7 @@ impl AST {
 
         for child in childs {
             // res +=
-            let MathToken::Op(op) = node.val() else {
+            let MathToken::Op(_) = node.val() else {
                 panic!()
             };
             res.push(OPERATOR_MAP.get_by_right(&node.val()).unwrap().clone());
