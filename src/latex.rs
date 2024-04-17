@@ -15,7 +15,7 @@ impl AST {
     fn to_latex_node(node: TreeNodeRef, res: &mut String) {
         let borrow = node.0.borrow();
 
-        let mut childs = borrow.childs.iter();
+        let mut childs = borrow.operands.iter();
         Self::token_to_latex(childs.next().unwrap(), res);
 
         for child in childs {

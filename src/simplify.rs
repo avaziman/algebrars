@@ -1,10 +1,7 @@
-use std::cmp::Ordering;
-
 use rust_decimal::{Decimal, MathematicalOps};
 
 use crate::{
-    ast::{TreeNodeRef, AST},
-    MathToken, OperationToken,
+    ast::{TreeNodeRef, AST}, operands::Operands, MathToken, OperationToken
 };
 
 // since contrary to addition, substraction is not an orderless operation,
@@ -20,37 +17,18 @@ impl AST {
         let MathToken::Op(op) = node.val() else {
             return;
         };
-        // operands.sort_by(|a, b| match a.val() {
-        //     MathToken::Constant(_) => Ordering::Greater,
-        //     MathToken::Variable(_) => match b.val() {
-        //         MathToken::Constant(_) => Ordering::Less,
-        //         MathToken::Variable(_) => Ordering::Equal,
-        //         MathToken::Op(_) => Ordering::Greater,
-        //     },
-        //     MathToken::Op(_) => Ordering::Less,
-        // });
-        // let constant_operands = operands.iter().filter_map(|f| {
-        //     if let MathToken::Constant(c) = f.val() {
-        //         Some(c)
-        //     } else {
-        //         None
-        //     }
-        // });
-        let mut borrow = node.0.borrow_mut();
-        let operands = &mut borrow.childs;
-        for op in operands.iter_mut() {
-            Self::simplify_node(op);
-        }
 
-        let mut constants = Vec::new();
-        operands.retain(|o| {
-            if let MathToken::Constant(c) = o.val() {
-                constants.push(c);
-                false
-            } else {
-                true
-            }
-        });
+        let mut borrow = node.0.borrow_mut();
+        let operands = &mut borrow.operands;
+        
+        let operators = operands.remove_operators();
+        
+        for mut op in operators {
+            Self::simplify_node(&mut op);
+            operands.add(op);
+        }
+        let constants = operands.remove_constants();
+
 
         let op = match op {
             OperationToken::Subtract => |a, b| a - b,
@@ -62,21 +40,27 @@ impl AST {
             OperationToken::Root => todo!(),
             OperationToken::LParent | OperationToken::RParent => unreachable!(),
         };
-
+        println!("constants {:?}", constants);
         let mut operand_iter = constants.into_iter();
-        let mut result = operand_iter.next().unwrap();
-        for operand in operand_iter {
-            result = op(result, operand);
-        }
+        if let Some(mut result) = operand_iter.next() {
+            for operand in operand_iter {
+                result = op(result, operand);
+            }
 
-        let result = TreeNodeRef::new_val(MathToken::Constant(result));
-        if operands.is_empty() {
-            // we have completed the operation, no operands left
-            std::mem::drop(borrow);
-            *node = result;
-        } else {
-            operands.push(result);
+            let result = TreeNodeRef::new_val(MathToken::Constant(result));
+            if operands.is_empty() {
+                // operation completed, no operands left
+                std::mem::drop(borrow);
+                *node = result;
+            } else {
+                // operation partaly complete
+                // operands.push(result);
+                operands.add(result);
+            }
         }
+        // else there is no constants to perform ops on
+
+        // let mut operand_iter = constants.into_iter();
     }
 }
 
@@ -87,7 +71,7 @@ pub enum Step {
 #[cfg(test)]
 mod tests {
     use rust_decimal_macros::dec;
-
+    use pretty_assertions::assert_eq;
     use crate::{
         ast::{TreeNodeRef, AST},
         lexer::Lexer,
@@ -102,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn simplify() {
+    fn simplify_constants() {
         simplify_test("1 + 2", TreeNodeRef::new_val(MathToken::Constant(dec!(3))));
 
         simplify_test(
@@ -122,6 +106,14 @@ mod tests {
 
         simplify_test(
             "2 + 2^3",
+            TreeNodeRef::new_val(MathToken::Constant(dec!(10))),
+        );
+    }
+
+    #[test]
+    fn simplify_x() {
+        simplify_test(
+            "2*x + x",
             TreeNodeRef::new_val(MathToken::Constant(dec!(10))),
         );
     }

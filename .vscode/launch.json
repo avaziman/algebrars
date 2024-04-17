@@ -13,7 +13,7 @@
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=algebrars"
+                    "--package=algebrars",
                 ],
                 "filter": {
                     "name": "algebrars",

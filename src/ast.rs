@@ -1,12 +1,14 @@
 use std::{cell::RefCell, io::empty, rc::Rc};
 
-use crate::{lexer::Lexer, MathToken, OperationToken};
+use crate::{lexer::Lexer, operands::Operands, MathToken, OperationToken};
 
 #[derive(Debug, Clone)]
 pub struct TreeNode {
     val: MathToken,
-    pub childs: Vec<TreeNodeRef>, // left: Option<TreeNodeRef>,
+    // pub childs: Vec<TreeNodeRef>, // left: Option<TreeNodeRef>,
                                   // right: Option<TreeNodeRef>,
+
+    pub operands: Operands
 }
 
 #[derive(Clone)]
@@ -15,11 +17,14 @@ pub struct TreeNodeRef(pub Rc<RefCell<TreeNode>>);
 impl PartialEq for TreeNodeRef {
     fn eq(&self, other: &TreeNodeRef) -> bool {
         self.0.borrow().val == other.0.borrow().val
-            && self.0.borrow().childs == other.0.borrow().childs
+            && self.0.borrow().operands == other.0.borrow().operands
         // && self.0.borrow().left == other.0.borrow().left
         // && self.0.borrow().right == other.0.borrow().right
     }
 }
+
+impl Eq for TreeNodeRef {}
+
 
 impl std::fmt::Debug for TreeNodeRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -55,12 +60,13 @@ impl TreeNode {
             val: token,
             // left: None,
             // right: None,
-            childs: vec![],
+            operands: Operands::new(),
         }
     }
 
     pub fn new_vals(token: MathToken, childs: Vec<TreeNodeRef>) -> TreeNode {
-        Self { val: token, childs }
+        let operands = Operands::from_iter(childs);
+        Self { val: token, operands }
     }
 }
 
@@ -115,11 +121,6 @@ impl AST {
 
         for token in rpn.into_iter() {
             if let MathToken::Op(op) = &token {
-                // let mut operand_iter = operator_it.clone().rev();
-                // if node.is_none() {
-                // check if unary op
-                // let right = nodes.pop();
-                // let left = nodes.pop();
                 let op_info = op.info();
                 let mut operands = nodes.split_off(nodes.len() - op_info.arity as usize);
 
@@ -128,6 +129,7 @@ impl AST {
 
                     continue;
                 }
+                // merge operands that use the same operator and are orderless
                 let last_operand = operands.iter().position(|t| t.val() == token);
 
                 if let Some(pos) = last_operand {
@@ -138,9 +140,9 @@ impl AST {
                         let mut borrow = last_operands_node.0.borrow_mut();
 
                         if token == operand.val() {
-                            borrow.childs.extend(operand.0.borrow().childs.clone());
+                            borrow.operands.extend(&operand.0.borrow().operands);
                         } else {
-                            borrow.childs.push(operand);
+                            borrow.operands.add(operand);
                         }
                     }
 
@@ -161,7 +163,7 @@ impl AST {
 
 #[cfg(test)]
 mod tests {
-    // use pretty_assertions::assert_eq;
+    use pretty_assertions::assert_eq;
     use rust_decimal_macros::dec;
 
     // Note this useful idiom: importing names from outer (for mod tests) scope.
