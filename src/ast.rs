@@ -6,9 +6,8 @@ use crate::{lexer::Lexer, operands::Operands, MathToken, OperationToken};
 pub struct TreeNode {
     val: MathToken,
     // pub childs: Vec<TreeNodeRef>, // left: Option<TreeNodeRef>,
-                                  // right: Option<TreeNodeRef>,
-
-    pub operands: Operands
+    // right: Option<TreeNodeRef>,
+    pub operands: Operands,
 }
 
 #[derive(Clone)]
@@ -24,7 +23,6 @@ impl PartialEq for TreeNodeRef {
 }
 
 impl Eq for TreeNodeRef {}
-
 
 impl std::fmt::Debug for TreeNodeRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -45,7 +43,7 @@ impl TreeNodeRef {
         self.0.borrow().val.clone()
     }
 
-    //  pub fn right(&self) -> Option<TreeNodeRef> {
+     //  pub fn right(&self) -> Option<TreeNodeRef> {
     //     self.0.borrow().left.clone()
     // }
 
@@ -66,8 +64,26 @@ impl TreeNode {
 
     pub fn new_vals(token: MathToken, childs: Vec<TreeNodeRef>) -> TreeNode {
         let operands = Operands::from_iter(childs);
-        Self { val: token, operands }
+        Self {
+            val: token,
+            operands,
+        }
     }
+
+
+   pub fn operand_iter(
+        &self,
+    ) -> std::iter::Chain<
+        std::iter::Chain<std::slice::Iter<TreeNodeRef>, std::slice::Iter<TreeNodeRef>>,
+        std::slice::Iter<TreeNodeRef>,
+    > {
+        if self.val == MathToken::Op(OperationToken::Multiply) {
+            self.operands.iter_mul()
+        } else {
+            self.operands.iter()
+        }
+    }
+
 }
 
 // abstract syntax tree

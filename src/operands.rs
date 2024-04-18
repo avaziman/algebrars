@@ -6,12 +6,12 @@ use rust_decimal::Decimal;
 
 use crate::{ast::TreeNodeRef, MathToken, OperationToken};
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Operands {
-    childs: Vec<TreeNodeRef>,
+    variables: Vec<TreeNodeRef>,
     // represent where each section of the vector starts
-    operators: usize,
-    constants: usize,
+    operators: Vec<TreeNodeRef>,
+    constants: Vec<TreeNodeRef>,
 }
 
 impl FromIterator<TreeNodeRef> for Operands {
@@ -25,65 +25,90 @@ impl FromIterator<TreeNodeRef> for Operands {
     }
 }
 
-impl PartialEq for Operands {
-    fn eq(&self, other: &Self) -> bool {
-        self.childs == other.childs
-    }
-}
-impl std::fmt::Debug for Operands {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.childs.fmt(f)
-    }
-}
+// impl std::fmt::Debug for Operands {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         self.childs.fmt(f)
+//     }
+// }
 
 // pub type Operands = BTreeSet<TreeNodeRef>;
 impl Operands {
     pub fn new() -> Self {
         Self {
-            childs: Vec::new(),
-            operators: 0,
-            constants: 0,
+            constants: Vec::new(),
+            operators: Vec::new(),
+            variables: Vec::new(),
         }
     }
 
     pub fn add(&mut self, node: TreeNodeRef) {
         match node.val() {
             MathToken::Constant(_) => {
-                self.childs.insert(self.operators, node);
-                self.operators += 1;
+                self.constants.push(node);
             }
             MathToken::Variable(_) => {
-                self.childs.insert(self.constants, node);
-                self.constants += 1;
-                self.operators += 1;
+                self.variables.push(node);
             }
             MathToken::Op(_) => {
-                self.childs.push(node);
+                self.operators.push(node);
             }
         }
     }
 
     pub fn extend(&mut self, other: &Self) {
-        for node in &other.childs {
+        for node in other.iter() {
             self.add(node.clone());
         }
     }
 
-    pub fn iter(&self) -> core::slice::Iter<TreeNodeRef> {
-        self.childs.iter()
+    pub fn iter(
+        &self,
+    ) -> std::iter::Chain<
+        std::iter::Chain<std::slice::Iter<TreeNodeRef>, std::slice::Iter<TreeNodeRef>>,
+        std::slice::Iter<TreeNodeRef>,
+    > {
+        self.operators
+            .iter()
+            .chain(self.variables.iter())
+            .chain(self.constants.iter())
     }
+
+    pub fn iter_mul(
+        &self,
+    ) -> std::iter::Chain<
+        std::iter::Chain<std::slice::Iter<TreeNodeRef>, std::slice::Iter<TreeNodeRef>>,
+        std::slice::Iter<TreeNodeRef>,
+    > {
+        self.constants
+            .iter()
+            .chain(self.variables.iter())
+            .chain(self.operators.iter())
+    }
+
+    pub fn len(&self) -> usize {
+        self.constants.len() + self.operators.len() + self.variables.len()  
+    }    
 
     pub fn is_empty(&self) -> bool {
-        self.childs.is_empty()
+        self.iter().next().is_none()
     }
-    pub fn remove_constants(&mut self) -> Vec<Decimal> {
-        // there cant be constants when removing operators
-        assert!(self.childs.len() <= self.operators);
-        // update index
-        self.operators = self.constants;
 
-        self.childs
-            .split_off(self.constants)
+    pub fn variables(&self) -> Vec<String> {
+        self.variables
+            .iter()
+            .map(|n| {
+                if let MathToken::Variable(d) = n.val() {
+                    d
+                } else {
+                    unreachable!()
+                }
+            })
+            .collect_vec()
+    }
+
+
+    pub fn constants(&self) -> Vec<Decimal> {
+        self.constants
             .iter()
             .map(|n| {
                 if let MathToken::Constant(d) = n.val() {
@@ -95,10 +120,25 @@ impl Operands {
             .collect_vec()
     }
 
+    pub fn remove_constants(&mut self) -> Vec<Decimal> {
+        // there cant be constants when removing operators
+        // assert!(self.constants <= self.operators);
+        // update index
+        self.constants
+            .drain(..)
+            .map(|n| {
+                if let MathToken::Constant(d) = n.val() {
+                    d
+                } else {
+                    unreachable!()
+                }
+            })
+            .collect_vec()
+    }
+
     pub fn remove_operators(&mut self) -> Vec<TreeNodeRef> {
-        self.childs
-            .split_off(self.operators)
-            .into_iter()
+        self.operators
+            .drain(..)
             .map(|n| {
                 if let MathToken::Op(_) = n.val() {
                     n

@@ -15,7 +15,7 @@ impl AST {
     fn to_latex_node(node: TreeNodeRef, res: &mut String) {
         let borrow = node.0.borrow();
 
-        let mut childs = borrow.operands.iter();
+        let mut childs = borrow.operand_iter();
         Self::token_to_latex(childs.next().unwrap(), res);
 
         for child in childs {
@@ -58,7 +58,7 @@ mod tests {
 
         assert_eq!(AST::parse(Lexer::new("2 * ((x) + (1) + (2 + 3))")).to_latex(), "2*(x+1+2+3)");
 
-        assert_eq!(AST::parse(Lexer::new("1 + 5 + 2 * 5 + 3 + 1")).to_latex(), "1+5+(2*5)+3+1");
+        assert_eq!(AST::parse(Lexer::new("1 + 5 + 2 * 5 + 3 + 1")).to_latex(), "(2*5)+1+5+3+1");
 
         assert_eq!(AST::parse(Lexer::new("2 * 5 * 3 + 1 * 2 + 3")).to_latex(), "(2*5*3)+(1*2)+3");
     }

@@ -1,7 +1,11 @@
+use itertools::Itertools;
 use rust_decimal::{Decimal, MathematicalOps};
+use rust_decimal_macros::dec;
 
 use crate::{
-    ast::{TreeNodeRef, AST}, operands::Operands, MathToken, OperationToken
+    ast::{TreeNodeRef, AST},
+    operands::Operands,
+    MathToken, OperationToken,
 };
 
 // since contrary to addition, substraction is not an orderless operation,
@@ -20,15 +24,50 @@ impl AST {
 
         let mut borrow = node.0.borrow_mut();
         let operands = &mut borrow.operands;
-        
+
         let operators = operands.remove_operators();
-        
+        let mut multipliers = Vec::new();
         for mut op in operators {
             Self::simplify_node(&mut op);
+            if let MathToken::Op(OperationToken::Multiply) = op.val() {
+                multipliers.push(op.clone());
+            }
+
             operands.add(op);
         }
-        let constants = operands.remove_constants();
 
+        Self::find_common_multiplier(multipliers);
+
+        // perform constant arithmatic
+        let mut constants = operands.remove_constants();
+
+        match op {
+            OperationToken::Subtract | OperationToken::Add => {
+                // +-0 changes nothing
+                constants.retain(|c| *c != Decimal::ZERO);
+            }
+            OperationToken::Multiply => {
+                // single zero zeros out everything in mul
+                if constants.iter().find(|c| c.is_zero()).is_some() {
+                    std::mem::drop(borrow);
+                    *node = TreeNodeRef::new_val(MathToken::Constant(Decimal::ZERO));
+                    return;
+                }
+
+                // *1 changes nothing
+                constants.retain(|c| *c != Decimal::ONE);
+            }
+            // OperationToken::Divide => todo!(),
+            _ => {}
+        }
+        
+        // eliminate the operators if its useless
+        if (operands.len() + constants.len()) == 1 && op.info().arity > 1 {
+            let value = operands.iter().next().unwrap().clone();
+            std::mem::drop(borrow);
+            *node = value;
+            return;
+        }
 
         let op = match op {
             OperationToken::Subtract => |a, b| a - b,
@@ -40,7 +79,7 @@ impl AST {
             OperationToken::Root => todo!(),
             OperationToken::LParent | OperationToken::RParent => unreachable!(),
         };
-        println!("constants {:?}", constants);
+
         let mut operand_iter = constants.into_iter();
         if let Some(mut result) = operand_iter.next() {
             for operand in operand_iter {
@@ -54,13 +93,9 @@ impl AST {
                 *node = result;
             } else {
                 // operation partaly complete
-                // operands.push(result);
                 operands.add(result);
             }
         }
-        // else there is no constants to perform ops on
-
-        // let mut operand_iter = constants.into_iter();
     }
 }
 
@@ -70,13 +105,13 @@ pub enum Step {
 
 #[cfg(test)]
 mod tests {
-    use rust_decimal_macros::dec;
-    use pretty_assertions::assert_eq;
     use crate::{
         ast::{TreeNodeRef, AST},
         lexer::Lexer,
         MathToken,
     };
+    use pretty_assertions::assert_eq;
+    use rust_decimal_macros::dec;
 
     fn simplify_test(expr: &str, res: TreeNodeRef) {
         let mut simplified = AST::parse(Lexer::new(expr));
@@ -112,6 +147,17 @@ mod tests {
 
     #[test]
     fn simplify_x() {
+        simplify_test(
+            "1*x",
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+        );
+
+        simplify_test("0*x", TreeNodeRef::new_val(MathToken::Constant(dec!(0))));
+
+        simplify_test(
+            "0 + x",
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+        );
         simplify_test(
             "2*x + x",
             TreeNodeRef::new_val(MathToken::Constant(dec!(10))),

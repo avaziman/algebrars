@@ -4,6 +4,7 @@ pub mod latex;
 pub mod lexer;
 pub mod simplify;
 pub mod operands;
+pub mod factorization;
 
 use rust_decimal::prelude::*;
 
@@ -21,8 +22,11 @@ pub enum OperationToken {
 }
 
 pub struct OperatorInfo {
+    // how many operands
     arity: u8,
+    // determines which operation is performed first (bigger -> priority)
     precedence: i8,
+    // whether the order of the operands changes the result
     orderless: bool,
     // associativity_left: bool,
 }
