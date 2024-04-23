@@ -1,8 +1,8 @@
 use std::borrow::Borrow;
 
-use crate::{ast::{TreeNodeRef, AST}, MathToken, OperationToken};
+use crate::{math_tree::{TreeNodeRef, MathTree}, MathToken, OperationToken};
 
-impl AST {
+impl MathTree {
     // TODO: foil
     // expanding is:
     // calculating literal operations

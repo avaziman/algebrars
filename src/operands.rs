@@ -4,7 +4,7 @@
 use itertools::Itertools;
 use rust_decimal::Decimal;
 
-use crate::{ast::TreeNodeRef, MathToken, OperationToken};
+use crate::{math_tree::TreeNodeRef, MathToken, OperationToken};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Operands {

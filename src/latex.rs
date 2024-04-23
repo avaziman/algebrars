@@ -1,10 +1,10 @@
 use crate::{
-    ast::{TreeNodeRef, AST},
+    math_tree::{TreeNodeRef, MathTree},
     lexer::OPERATOR_MAP,
     MathToken, OperationToken,
 };
 
-impl AST {
+impl MathTree {
     pub fn to_latex(&self) -> String {
         let mut res = String::new();
 
@@ -46,20 +46,20 @@ impl AST {
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::{ast::AST, lexer::Lexer};
+    use crate::{math_tree::MathTree, lexer::Lexer};
 
     #[test]
     pub fn simple_latex() {
-        assert_eq!(AST::parse(Lexer::new("2 * x")).to_latex(), "2*x");
+        assert_eq!(MathTree::parse("2 * x").to_latex(), "2*x");
 
-        assert_eq!(AST::parse(Lexer::new("2 * (x + 1)")).to_latex(), "2*(x+1)");
+        assert_eq!(MathTree::parse("2 * (x + 1)").to_latex(), "2*(x+1)");
 
-        assert_eq!(AST::parse(Lexer::new("2 * (x + 1 + (2 + 3))")).to_latex(), "2*(x+1+2+3)");
+        assert_eq!(MathTree::parse("2 * (x + 1 + (2 + 3))").to_latex(), "2*(x+1+2+3)");
 
-        assert_eq!(AST::parse(Lexer::new("2 * ((x) + (1) + (2 + 3))")).to_latex(), "2*(x+1+2+3)");
+        assert_eq!(MathTree::parse("2 * ((x) + (1) + (2 + 3))").to_latex(), "2*(x+1+2+3)");
 
-        assert_eq!(AST::parse(Lexer::new("1 + 5 + 2 * 5 + 3 + 1")).to_latex(), "(2*5)+1+5+3+1");
+        assert_eq!(MathTree::parse("1 + 5 + 2 * 5 + 3 + 1").to_latex(), "(2*5)+1+5+3+1");
 
-        assert_eq!(AST::parse(Lexer::new("2 * 5 * 3 + 1 * 2 + 3")).to_latex(), "(2*5*3)+(1*2)+3");
+        assert_eq!(MathTree::parse("2 * 5 * 3 + 1 * 2 + 3").to_latex(), "(2*5*3)+(1*2)+3");
     }
 }

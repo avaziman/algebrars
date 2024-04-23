@@ -4,9 +4,9 @@ use itertools::Itertools;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
-use crate::ast::{TreeNodeRef, AST};
+use crate::math_tree::{TreeNodeRef, MathTree};
 
-impl AST {
+impl MathTree {
     pub(crate) fn find_common_multiplier(multipliers: Vec<TreeNodeRef>) {
         // grouping terms is done only after arithmatics, so we will have at most one constant operand per multiplication
         let mut constants = multipliers
@@ -89,31 +89,31 @@ impl AST {
 mod tests {
     use rust_decimal_macros::dec;
 
-    use crate::ast::AST;
+    use crate::math_tree::MathTree;
 
     #[test]
     fn common_multiplier_constant() {
-        assert_eq!(AST::find_common_constant(vec![dec!(2)]), None);
+        assert_eq!(MathTree::find_common_constant(vec![dec!(2)]), None);
 
-        assert_eq!(AST::find_common_constant(vec![dec!(2), dec!(3)]), None);
+        assert_eq!(MathTree::find_common_constant(vec![dec!(2), dec!(3)]), None);
 
         assert_eq!(
-            AST::find_common_constant(vec![dec!(2), dec!(4)]),
+            MathTree::find_common_constant(vec![dec!(2), dec!(4)]),
             Some(dec!(2))
         );
 
         assert_eq!(
-            AST::find_common_constant(vec![dec!(4), dec!(6)]),
+            MathTree::find_common_constant(vec![dec!(4), dec!(6)]),
             Some(dec!(2))
         );
 
         assert_eq!(
-            AST::find_common_constant(vec![dec!(4), dec!(8), dec!(12)]),
+            MathTree::find_common_constant(vec![dec!(4), dec!(8), dec!(12)]),
             Some(dec!(4))
         );
 
         assert_eq!(
-            AST::find_common_constant(vec![dec!(4), dec!(8), dec!(0.5)]),
+            MathTree::find_common_constant(vec![dec!(4), dec!(8), dec!(0.5)]),
             Some(dec!(0.5))
         );
 

@@ -1,5 +1,8 @@
 use std::{cell::RefCell, io::empty, rc::Rc};
 
+use rust_decimal::Decimal;
+use rust_decimal_macros::dec;
+
 use crate::{lexer::Lexer, operands::Operands, MathToken, OperationToken};
 
 #[derive(Debug, Clone)]
@@ -43,7 +46,22 @@ impl TreeNodeRef {
         self.0.borrow().val.clone()
     }
 
-     //  pub fn right(&self) -> Option<TreeNodeRef> {
+    pub fn constant(dec: Decimal) -> Self {
+        Self::new_val(MathToken::Constant(dec))
+    }
+
+    pub fn zero() -> Self {
+        Self::constant(dec!(0))
+    }
+
+    pub fn one() -> Self {
+        Self::constant(dec!(1))
+    }
+
+    pub fn two() -> Self {
+        Self::constant(dec!(2))
+    }
+    //  pub fn right(&self) -> Option<TreeNodeRef> {
     //     self.0.borrow().left.clone()
     // }
 
@@ -70,8 +88,7 @@ impl TreeNode {
         }
     }
 
-
-   pub fn operand_iter(
+    pub fn operand_iter(
         &self,
     ) -> std::iter::Chain<
         std::iter::Chain<std::slice::Iter<TreeNodeRef>, std::slice::Iter<TreeNodeRef>>,
@@ -83,16 +100,15 @@ impl TreeNode {
             self.operands.iter()
         }
     }
-
 }
 
 // abstract syntax tree
 #[derive(Debug)]
-pub struct AST {
+pub struct MathTree {
     pub(crate) root: TreeNodeRef,
 }
 
-impl AST {
+impl MathTree {
     pub fn reverse_polish_notation(lexer: Lexer) -> Vec<MathToken> {
         let mut output = Vec::new();
         let mut operators: Vec<OperationToken> = Vec::new();
@@ -131,8 +147,8 @@ impl AST {
         output
     }
 
-    pub fn parse(lexer: Lexer) -> Self {
-        let rpn = Self::reverse_polish_notation(lexer);
+    pub fn parse(str: &str) -> Self {
+        let rpn = Self::reverse_polish_notation(Lexer::new(str));
         let mut nodes: Vec<TreeNodeRef> = Vec::new();
 
         for token in rpn.into_iter() {
@@ -171,7 +187,7 @@ impl AST {
             }
         }
 
-        AST {
+        MathTree {
             root: nodes.pop().unwrap(),
         }
     }
@@ -187,9 +203,10 @@ mod tests {
 
     #[test]
     fn rpn() {
-        let lexer = Lexer::new("2 * x");
+        let txt = "2 * x";
+        let lexer = Lexer::new(txt);
         assert_eq!(
-            AST::reverse_polish_notation(lexer.clone()),
+            MathTree::reverse_polish_notation(lexer.clone()),
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
@@ -198,7 +215,7 @@ mod tests {
         );
 
         assert_eq!(
-            AST::parse(lexer).root,
+            MathTree::parse(txt).root,
             TreeNodeRef::new_vals(
                 MathToken::Op(OperationToken::Multiply),
                 vec![
@@ -211,9 +228,11 @@ mod tests {
 
     #[test]
     fn rpn_precedence() {
-        let lexer = Lexer::new("2 * x + 1");
+        let txt = "2 * x + 1";
+        let lexer = Lexer::new(txt);
+
         assert_eq!(
-            AST::reverse_polish_notation(lexer.clone()),
+            MathTree::reverse_polish_notation(lexer.clone()),
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
@@ -224,7 +243,7 @@ mod tests {
         );
 
         assert_eq!(
-            AST::parse(lexer).root,
+            MathTree::parse(txt).root,
             TreeNodeRef::new_vals(
                 MathToken::Op(OperationToken::Add),
                 vec![
@@ -244,7 +263,7 @@ mod tests {
     #[test]
     fn rpn_precedence2() {
         assert_eq!(
-            AST::reverse_polish_notation(Lexer::new("2 * x + 1 * 3 + 4")),
+            MathTree::reverse_polish_notation(Lexer::new("2 * x + 1 * 3 + 4")),
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
@@ -262,7 +281,7 @@ mod tests {
     #[test]
     fn rpn_precedence_parentheses() {
         assert_eq!(
-            AST::reverse_polish_notation(Lexer::new("2 * (x + 1)")),
+            MathTree::reverse_polish_notation(Lexer::new("2 * (x + 1)")),
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
@@ -275,10 +294,11 @@ mod tests {
 
     #[test]
     fn rpn_precedence_double_parentheses() {
-        let lexer = Lexer::new("2 * (4 + (x + 1))");
+        let txt = "2 * (4 + (x + 1))";
+        let lexer = Lexer::new(txt);
         // 2 * (x + 5)
         assert_eq!(
-            AST::reverse_polish_notation(lexer.clone()),
+            MathTree::reverse_polish_notation(lexer.clone()),
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Constant(dec!(4)),
@@ -291,7 +311,7 @@ mod tests {
         );
 
         assert_eq!(
-            AST::parse(lexer).root,
+            MathTree::parse(txt).root,
             TreeNodeRef::new_vals(
                 MathToken::Op(OperationToken::Multiply),
                 vec![
@@ -308,10 +328,11 @@ mod tests {
             )
         );
 
-        let lexer = Lexer::new("2 * (x + 1 + (2 + 3))");
+        let txt = "2 * (x + 1 + (2 + 3))";
+        let lexer = Lexer::new(&txt);
 
         assert_eq!(
-            AST::reverse_polish_notation(lexer.clone()),
+            MathTree::reverse_polish_notation(lexer.clone()),
             vec![
                 MathToken::Constant(dec!(2)),
                 MathToken::Variable("x".to_string()),
@@ -326,7 +347,7 @@ mod tests {
         );
 
         assert_eq!(
-            AST::parse(lexer).root,
+            MathTree::parse(txt).root,
             TreeNodeRef::new_vals(
                 MathToken::Op(OperationToken::Multiply),
                 vec![
@@ -347,10 +368,10 @@ mod tests {
 
     #[test]
     fn tree_group_orderless() {
-        let lexer = Lexer::new("2 + 3 + 4 * 2 * 3");
+        let lexer = "2 + 3 + 4 * 2 * 3";
 
         assert_eq!(
-            AST::parse(lexer).root,
+            MathTree::parse(lexer).root,
             TreeNodeRef::new_vals(
                 MathToken::Op(OperationToken::Add),
                 vec![
@@ -368,10 +389,10 @@ mod tests {
             )
         );
 
-        let lexer = Lexer::new("2 + 2^2");
+        let lexer = "2 + 2^2";
 
         assert_eq!(
-            AST::parse(lexer).root,
+            MathTree::parse(lexer).root,
             TreeNodeRef::new_vals(
                 MathToken::Op(OperationToken::Add),
                 vec![

@@ -1,10 +1,14 @@
-pub mod ast;
+pub mod math_tree;
 pub mod expand;
 pub mod latex;
 pub mod lexer;
 pub mod simplify;
 pub mod operands;
 pub mod factorization;
+pub mod equations;
+pub mod stepper;
+pub mod arithmatic;
+pub mod pattern;
 
 use rust_decimal::prelude::*;
 
