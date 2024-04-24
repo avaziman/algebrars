@@ -30,7 +30,6 @@ impl MathTree {
         // let mut multipliers = Vec::new();
         for mut op in operators {
             Self::simplify_node( &mut op);
-            Self::perform_op(&mut op);
             // if let MathToken::Op(OperationToken::Multiply) = op.val() {
             //     multipliers.push(op.clone());
             // }
@@ -99,6 +98,19 @@ mod tests {
             "0 + x",
             TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
         );
+
+        simplify_test(
+            "x + x",
+            TreeNodeRef::new_vals(
+                MathToken::Op(OperationToken::Multiply),
+                vec![
+                    TreeNodeRef::constant(dec!(2)),
+                    TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+                ],
+            ),
+        );
+
+
         simplify_test(
             "2*x + x",
             TreeNodeRef::new_vals(
@@ -111,3 +123,4 @@ mod tests {
         );
     }
 }
+

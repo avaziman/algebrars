@@ -11,6 +11,8 @@
             "cargo": {
                 "args": [
                     "test",
+                    // "--test",
+                    // "simplify::simplify_x",
                     "--no-run",
                     "--lib",
                     "--package=algebrars",

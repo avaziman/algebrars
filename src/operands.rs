@@ -55,6 +55,26 @@ impl Operands {
         }
     }
 
+    pub fn pop(&mut self) -> Option<TreeNodeRef> {
+        if !self.operators.is_empty() {
+            self.operators.pop()
+        }else if !self.variables.is_empty() {
+            self.variables.pop()
+        }else {
+            self.constants.pop()
+        }
+    }
+
+    // pub fn replace(&mut self, index: usize, new: TreeNodeRef) {
+    //     if index < self.operators.len() {
+    //         self.operators.remove(index);
+    //     }else if index < self.operators.len() + self.variables.len() {
+    //         self.variables.remove(index - self.operators.len());
+    //     }else {
+    //         self.constants.remove(index - self.operators.len() - self.variables.len()); 
+    //     }
+    // }
+
     pub fn extend(&mut self, other: &Self) {
         for node in other.iter() {
             self.add(node.clone());

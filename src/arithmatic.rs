@@ -5,6 +5,7 @@ use rust_decimal_macros::dec;
 
 use crate::{
     math_tree::{MathTree, TreeNode, TreeNodeRef},
+    operands::Operands,
     stepper::Step,
     MathToken, OperationToken,
 };
@@ -15,30 +16,46 @@ pub enum OpDescription {
     // a == b
     EqualOperand,
     // b == 0
-    ByZero,
+    ByZero(TreeNodeRef),
     // b == 1
-    ByOne,
+    ByOne(TreeNodeRef),
     // a and b are constants
     BothConstants(Decimal, Decimal),
 }
 
-pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef) -> Option<OpDescription> {
-    if a == b {
-        return Some(OpDescription::EqualOperand);
-    } else if let MathToken::Constant(c) = b.val() {
-        if c == Decimal::ZERO {
-            return Some(OpDescription::ByZero);
-        } else if c == Decimal::ONE {
-            return Some(OpDescription::ByOne);
-        }
-    }
-
-    // if a is constant then b is necessarily constant too because of operand order
-    if let MathToken::Constant(c1) = a.val() {
-        if let MathToken::Constant(c2) = b.val() {
+pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef, orderless: bool) -> Option<OpDescription> {
+    if let MathToken::Constant(c2) = b.val() {
+        if let MathToken::Constant(c1) = a.val() {
             return Some(OpDescription::BothConstants(c1, c2));
         }
+
+        if c2 == Decimal::ZERO {
+            return Some(OpDescription::ByZero(a.clone()));
+        } else if c2 == Decimal::ONE {
+            return Some(OpDescription::ByOne(a.clone()));
+        }
     }
+    else if a == b {
+        return Some(OpDescription::EqualOperand);
+    }
+
+    if orderless {
+
+        if let MathToken::Constant(c1) = a.val() {
+            if c1 == Decimal::ZERO {
+                return Some(OpDescription::ByZero(b.clone()));
+            } else if c1 == Decimal::ONE {
+                return Some(OpDescription::ByOne(b.clone()));
+            }
+        }
+        
+    }
+    // if a is constant then b is necessarily constant too because of operand order
+    // if let MathToken::Constant(c1) = a.val() {
+    //     if let MathToken::Constant(c2) = b.val() {
+    //         return Some(OpDescription::BothConstants(c1, c2));
+    //     }
+    // }
 
     None
 }
@@ -49,26 +66,53 @@ impl MathTree {
             panic!("Not operation")
         };
 
-        let operands = &node.0.borrow().operands;
-        let mut operands_iter = operands.iter();
+        let mut borrow = node.0.borrow_mut();
+        let operands = &mut borrow.operands;
+        // let mut operands_iter = operands.iter().enumerate();
         // for arity 2 only
-        let do_op = Self::get_op(op);
-        let mut a = operands_iter.next().expect("Empty operation").clone();
+        let do_op = Self::get_op(&op);
+        // let mut a = operands.pop().unwrap();
 
-        for b in operands_iter {
-            let desc = get_description(&a, b);
-            let step = Step::PerformOp(desc.clone());
-            if let Some(res) = do_op(&a, b, desc) {
-                // Self::step(node, new_node, step);
-                a = res;
+        let mut remaining = Vec::new();
+        loop {
+            if operands.len() < 2 {
+                break;
             }
 
+            let b = operands.pop().unwrap();
+            let a = operands.pop().unwrap();
+
+            let desc = get_description(&a, &b, op.info().orderless);
+            // let step = Step::PerformOp(desc.clone());
+            if let Some(res) = do_op(&a, &b, desc) {
+                // Self::step(node, new_node, step);
+                // a = res.clone();
+                operands.add(res);
+            } else {
+
+                // res_operands.add(a);
+                remaining.push(a);
+                remaining.push(b);
+                // res_operands.add(b);
+            }
+        }
+
+        for r in remaining {
+            operands.add(r);
+        }
+
+        if operands.len() == 1 {
+            let val = operands.pop().unwrap();
+            std::mem::drop(borrow);
+
+            *node = val;
         }
     }
+            // Self::perform_op(&mut op);
 
     fn get_op(
-        op: OperationToken,
-    ) ->  fn(&TreeNodeRef, &TreeNodeRef, Option<OpDescription>) -> Option<TreeNodeRef> {
+        op: &OperationToken,
+    ) -> fn(&TreeNodeRef, &TreeNodeRef, Option<OpDescription>) -> Option<TreeNodeRef> {
         // let desc = get_description(a, b);
         match op {
             OperationToken::Add => {
@@ -82,7 +126,7 @@ impl MathTree {
                         vec![TreeNodeRef::two(), a.clone()],
                     )),
                     // x + 0 = x
-                    Some(OpDescription::ByZero) => Some(a.clone()),
+                    Some(OpDescription::ByZero(x)) => Some(x),
                     // x + 1 = x + 1
                     // Some(OpDescription::ByOne)
                     _ => None,
@@ -96,14 +140,15 @@ impl MathTree {
                     // x - x = 0
                     Some(OpDescription::EqualOperand) => Some(TreeNodeRef::zero()),
                     // x - 0 = x
-                    Some(OpDescription::ByZero) => Some(a.clone()),
+                    Some(OpDescription::ByZero(x)) => Some(x),
                     // x - 1 = x - 1
                     // Some(OpDescription::ByOne)
                     _ => None,
                 }
             }
             OperationToken::Multiply => {
-                |a: &TreeNodeRef, b: &TreeNodeRef, desc| match desc {
+                |a: &TreeNodeRef, b: &TreeNodeRef, desc|
+                 match desc {
                     Some(OpDescription::BothConstants(c1, c2)) => {
                         Some(TreeNodeRef::constant(c1 * c2))
                     }
@@ -113,9 +158,9 @@ impl MathTree {
                         vec![a.clone(), TreeNodeRef::two()],
                     )),
                     // x * 0 = 0
-                    Some(OpDescription::ByZero) => Some(TreeNodeRef::zero()),
+                    Some(OpDescription::ByZero(_)) => Some(TreeNodeRef::zero()),
                     // x * 1 = x
-                    Some(OpDescription::ByOne) => Some(a.clone()),
+                    Some(OpDescription::ByOne(x)) => Some(x),
                     _ => {
                         if let MathToken::Op(OperationToken::Pow) = a.val() {
                             if let MathToken::Op(OperationToken::Pow) = b.val() {
@@ -138,9 +183,9 @@ impl MathTree {
                     // x / x = 1
                     Some(OpDescription::EqualOperand) => Some(TreeNodeRef::one()),
                     // x / 0 = undefined
-                    Some(OpDescription::ByZero) => panic!(),
+                    Some(OpDescription::ByZero(_)) => panic!(),
                     // x / 1 = x
-                    Some(OpDescription::ByOne) => Some(a.clone()),
+                    Some(OpDescription::ByOne(x)) => Some(x),
                     _ => None,
                 }
             }
@@ -153,10 +198,10 @@ impl MathTree {
                     // Some(OpDescription::EqualOperand)
 
                     // x ^ 0 = 1
-                    Some(OpDescription::ByZero) => Some(TreeNodeRef::one()),
+                    Some(OpDescription::ByZero(_)) => Some(TreeNodeRef::one()),
 
                     // x ^ 1 = x
-                    Some(OpDescription::ByOne) => Some(a.clone()),
+                    Some(OpDescription::ByOne(x)) => Some(x),
                     _ => {
                         // (a + b)^2 = a^2 + 2ab + b^2
                         // (a + b) * (c + d) = a(c + d) + b(c + d) = ac + ad + bc + bd
