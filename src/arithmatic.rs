@@ -1,17 +1,15 @@
-use std::any::Any;
-
 use rust_decimal::{Decimal, MathematicalOps};
 use rust_decimal_macros::dec;
 
 use crate::{
     math_tree::{MathTree, TreeNode, TreeNodeRef},
     operands::Operands,
-    stepper::Step,
+    stepper::{Step, Steps},
     MathToken, OperationToken,
 };
 
 // the operands are checked against these scenarios as they usually result in a different behavior and explanation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum OpDescription {
     // a == b
     EqualOperand,
@@ -34,13 +32,11 @@ pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef, orderless: bool) -> Opt
         } else if c2 == Decimal::ONE {
             return Some(OpDescription::ByOne(a.clone()));
         }
-    }
-    else if a == b {
+    } else if a == b {
         return Some(OpDescription::EqualOperand);
     }
 
     if orderless {
-
         if let MathToken::Constant(c1) = a.val() {
             if c1 == Decimal::ZERO {
                 return Some(OpDescription::ByZero(b.clone()));
@@ -48,7 +44,6 @@ pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef, orderless: bool) -> Opt
                 return Some(OpDescription::ByOne(b.clone()));
             }
         }
-        
     }
     // if a is constant then b is necessarily constant too because of operand order
     // if let MathToken::Constant(c1) = a.val() {
@@ -61,7 +56,7 @@ pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef, orderless: bool) -> Opt
 }
 
 impl MathTree {
-    pub fn perform_op(node: &mut TreeNodeRef) {
+    pub fn perform_op(node: &mut TreeNodeRef, steps: &mut Steps) {
         let MathToken::Op(op) = node.val() else {
             panic!("Not operation")
         };
@@ -70,30 +65,27 @@ impl MathTree {
         let operands = &mut borrow.operands;
         // let mut operands_iter = operands.iter().enumerate();
         // for arity 2 only
-        let do_op = Self::get_op(&op);
         // let mut a = operands.pop().unwrap();
 
+        let do_op = Self::get_op(&op);
         let mut remaining = Vec::new();
         loop {
             if operands.len() < 2 {
                 break;
             }
 
-            let b = operands.pop().unwrap();
-            let a = operands.pop().unwrap();
+            let a = operands.pop_front().unwrap();
+            let b = operands.pop_front().unwrap();
 
             let desc = get_description(&a, &b, op.info().orderless);
-            // let step = Step::PerformOp(desc.clone());
+            let step = Step::PerformOp(desc.clone());
             if let Some(res) = do_op(&a, &b, desc) {
-                // Self::step(node, new_node, step);
+                steps.step((&a, &b), &res, step);
                 // a = res.clone();
                 operands.add(res);
             } else {
-
-                // res_operands.add(a);
                 remaining.push(a);
                 remaining.push(b);
-                // res_operands.add(b);
             }
         }
 
@@ -102,13 +94,13 @@ impl MathTree {
         }
 
         if operands.len() == 1 {
-            let val = operands.pop().unwrap();
+            let val = operands.pop_front().unwrap();
             std::mem::drop(borrow);
 
             *node = val;
         }
     }
-            // Self::perform_op(&mut op);
+    // Self::perform_op(&mut op);
 
     fn get_op(
         op: &OperationToken,
@@ -143,12 +135,28 @@ impl MathTree {
                     Some(OpDescription::ByZero(x)) => Some(x),
                     // x - 1 = x - 1
                     // Some(OpDescription::ByOne)
-                    _ => None,
+                    _ => {
+                        // -(-x) = x
+                        // if let MathToken::Op(OperationToken::Subtract) = b.val() {
+                        //     {
+                        //         let borrow = b.0.borrow();
+                        //         let mut iter = borrow.operand_iter();
+                        //         if iter.next().unwrap().val() == MathToken::Constant(Decimal::ZERO)
+                        //         {
+                        //             let val = iter.next().unwrap();
+                        //             return Some(TreeNodeRef::new_vals(
+                        //                 MathToken::Op(OperationToken::Add),
+                        //                 vec![a.clone(), val.clone()],
+                        //             ))
+                        //         }
+                        //     }
+                        // }
+                        None
+                    }
                 }
             }
             OperationToken::Multiply => {
-                |a: &TreeNodeRef, b: &TreeNodeRef, desc|
-                 match desc {
+                |a: &TreeNodeRef, b: &TreeNodeRef, desc| match desc {
                     Some(OpDescription::BothConstants(c1, c2)) => {
                         Some(TreeNodeRef::constant(c1 * c2))
                     }
@@ -165,8 +173,8 @@ impl MathTree {
                         if let MathToken::Op(OperationToken::Pow) = a.val() {
                             if let MathToken::Op(OperationToken::Pow) = b.val() {
                                 let b1 = a.0.borrow();
-                                let term = b1.operands.iter().next().unwrap();
-                                if term == b.0.borrow().operands.iter().next().unwrap() {
+                                let term = b1.operands.iter().next().unwrap().1;
+                                if term == b.0.borrow().operands.iter().next().unwrap().1 {
                                     // x^n * x^m = x^(n+m)
                                 }
                             }
@@ -214,5 +222,15 @@ impl MathTree {
             OperationToken::Root => todo!(),
             OperationToken::LParent | OperationToken::RParent => unreachable!(),
         }
+    }
+}
+
+impl TreeNodeRef {
+    pub fn add(self, node: TreeNodeRef) -> TreeNodeRef {
+        TreeNodeRef::new_vals(MathToken::Op(OperationToken::Add), vec![self, node])
+    }
+
+    pub fn subtract(self, node: TreeNodeRef) -> TreeNodeRef {
+        TreeNodeRef::new_vals(MathToken::Op(OperationToken::Subtract), vec![self, node])
     }
 }

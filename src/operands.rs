@@ -1,6 +1,12 @@
 // data structure for storing operator operand children by order of type, variables then constants,
 // valuable for optimizing simplification process and ordering arguments for readability
 
+use std::{
+    iter::{Chain, Enumerate, Map},
+    ops::Index,
+    slice::Iter,
+};
+
 use itertools::Itertools;
 use rust_decimal::Decimal;
 
@@ -25,11 +31,32 @@ impl FromIterator<TreeNodeRef> for Operands {
     }
 }
 
+type OperandIt<'a> = Map<
+    Enumerate<Iter<'a, TreeNodeRef>>,
+    fn((usize, &'a TreeNodeRef)) -> (OperandPos, &TreeNodeRef),
+>;
 // impl std::fmt::Debug for Operands {
 //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 //         self.childs.fmt(f)
 //     }
 // }
+pub enum OperandPos {
+    Constants(usize),
+    Operators(usize),
+    Variables(usize),
+}
+
+impl Index<OperandPos> for Operands {
+    type Output = TreeNodeRef;
+
+    fn index(&self, index: OperandPos) -> &Self::Output {
+        match index {
+            OperandPos::Constants(p) => &self.constants[p],
+            OperandPos::Operators(p) => &self.operators[p],
+            OperandPos::Variables(p) => &self.variables[p],
+        }
+    }
+}
 
 // pub type Operands = BTreeSet<TreeNodeRef>;
 impl Operands {
@@ -55,13 +82,21 @@ impl Operands {
         }
     }
 
-    pub fn pop(&mut self) -> Option<TreeNodeRef> {
-        if !self.operators.is_empty() {
-            self.operators.pop()
-        }else if !self.variables.is_empty() {
-            self.variables.pop()
-        }else {
-            self.constants.pop()
+        pub fn extend(&mut self, other: &Self) {
+        for (_, node) in other.iter() {
+            self.add(node.clone());
+        }
+    }
+
+    pub fn pop_front(&mut self) -> Option<TreeNodeRef> {
+        Some(self.remove(self.iter().next()?.0))
+    }
+
+    pub fn remove(&mut self, pos: OperandPos) -> TreeNodeRef {
+        match pos {
+            OperandPos::Constants(p) => self.constants.remove(p),
+            OperandPos::Operators(p) => self.operators.remove(p),
+            OperandPos::Variables(p) => self.variables.remove(p),
         }
     }
 
@@ -71,89 +106,76 @@ impl Operands {
     //     }else if index < self.operators.len() + self.variables.len() {
     //         self.variables.remove(index - self.operators.len());
     //     }else {
-    //         self.constants.remove(index - self.operators.len() - self.variables.len()); 
+    //         self.constants.remove(index - self.operators.len() - self.variables.len());
     //     }
+    // }   }
+
+    // pub fn variables(&self) -> Vec<String> {
+    //     self.variables
+    //         .iter()
+    //         .map(|n| {
+    //             if let MathToken::Variable(d) = n.val() {
+    //                 d
+    //             } else {
+    //                 unreachable!()
+    //             }
+    //         })
+    //         .collect_vec()
+    // }
     // }
 
-    pub fn extend(&mut self, other: &Self) {
-        for node in other.iter() {
-            self.add(node.clone());
-        }
+    pub fn iter(&self) -> Chain<Chain<OperandIt, OperandIt>, OperandIt> {
+        self.operators()
+            .chain(self.variables())
+            .chain(self.constants())
     }
 
-    pub fn iter(
-        &self,
-    ) -> std::iter::Chain<
-        std::iter::Chain<std::slice::Iter<TreeNodeRef>, std::slice::Iter<TreeNodeRef>>,
-        std::slice::Iter<TreeNodeRef>,
-    > {
-        self.operators
-            .iter()
-            .chain(self.variables.iter())
-            .chain(self.constants.iter())
-    }
-
-    pub fn iter_mul(
-        &self,
-    ) -> std::iter::Chain<
-        std::iter::Chain<std::slice::Iter<TreeNodeRef>, std::slice::Iter<TreeNodeRef>>,
-        std::slice::Iter<TreeNodeRef>,
-    > {
-        self.constants
-            .iter()
-            .chain(self.variables.iter())
-            .chain(self.operators.iter())
+    pub fn iter_mul(&self) -> Chain<Chain<OperandIt, OperandIt>, OperandIt> {
+        self.constants()
+            .chain(self.variables())
+            .chain(self.operators())
     }
 
     pub fn len(&self) -> usize {
-        self.constants.len() + self.operators.len() + self.variables.len()  
-    }    
+        self.constants.len() + self.operators.len() + self.variables.len()
+    }
 
     pub fn is_empty(&self) -> bool {
         self.iter().next().is_none()
     }
 
-    pub fn variables(&self) -> Vec<String> {
+    // pub fn variables(&self) -> Vec<String> {
+    //     self.variables
+    //         .iter()
+    //         .map(|n| {
+    //             if let MathToken::Variable(d) = n.val() {
+    //                 d
+    //             } else {
+    //                 unreachable!()
+    //             }
+    //         })
+    //         .collect_vec()
+    // }
+
+    pub fn constants(&self) -> OperandIt {
+        self.constants
+            .iter()
+            .enumerate()
+            .map(|(i, c)| (OperandPos::Constants(i), c))
+    }
+
+    pub fn operators(&self) -> OperandIt {
+        self.operators
+            .iter()
+            .enumerate()
+            .map(|(i, c)| (OperandPos::Operators(i), c))
+    }
+
+    pub fn variables(&self) -> OperandIt {
         self.variables
             .iter()
-            .map(|n| {
-                if let MathToken::Variable(d) = n.val() {
-                    d
-                } else {
-                    unreachable!()
-                }
-            })
-            .collect_vec()
-    }
-
-
-    pub fn constants(&self) -> Vec<Decimal> {
-        self.constants
-            .iter()
-            .map(|n| {
-                if let MathToken::Constant(d) = n.val() {
-                    d
-                } else {
-                    unreachable!()
-                }
-            })
-            .collect_vec()
-    }
-
-    pub fn remove_constants(&mut self) -> Vec<Decimal> {
-        // there cant be constants when removing operators
-        // assert!(self.constants <= self.operators);
-        // update index
-        self.constants
-            .drain(..)
-            .map(|n| {
-                if let MathToken::Constant(d) = n.val() {
-                    d
-                } else {
-                    unreachable!()
-                }
-            })
-            .collect_vec()
+            .enumerate()
+            .map(|(i, c)| (OperandPos::Variables(i), c))
     }
 
     pub fn remove_operators(&mut self) -> Vec<TreeNodeRef> {
@@ -168,13 +190,4 @@ impl Operands {
             })
             .collect_vec()
     }
-
-    // fn power_of(node: &TreeNodeRef) -> i8 {
-    //     // first operators because we don't know their "power"
-    //     match node.val() {
-    //         MathToken::Constant(_) => 0,
-    //         MathToken::Variable(_) => 1,
-    //         MathToken::Op(_) => 2,
-    //     }
-    // }
 }

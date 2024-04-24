@@ -38,7 +38,7 @@ impl MathTree {
                     // operands length must match
                     b1.operands.len() == b2.operands.len() &&
                     // all the childs must match the rest of the pattern
-                    iter1.zip(iter2).all(|(a, b)| 
+                    iter1.zip(iter2).all(|((_, a), (_, b))| 
                         Self::node_like(a, b, variables))
                 } else {
                     false
@@ -65,7 +65,7 @@ mod tests {
 
     use rust_decimal_macros::dec;
 
-    use crate::math_tree::{MathTree, TreeNodeRef};
+    use crate::{math_tree::{MathTree, TreeNodeRef}, MathToken};
 
     #[test]
     fn like_test() {
@@ -74,5 +74,11 @@ mod tests {
             ("m".to_string(), TreeNodeRef::constant(dec!(3))),
             ("n".to_string(), TreeNodeRef::constant(dec!(4))),
         ])));
+
+        assert_eq!(MathTree::like(&MathTree::parse("(x + 2)^2").root, "(a + b)^2"), Some(HashMap::from([
+            ("a".to_string(), TreeNodeRef::new_val(MathToken::Variable(String::from("x")))),
+            ("b".to_string(), TreeNodeRef::constant(dec!(2))),
+        ])));
+
     }
 }

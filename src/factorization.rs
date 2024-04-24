@@ -4,7 +4,10 @@ use itertools::Itertools;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
-use crate::math_tree::{TreeNodeRef, MathTree};
+use crate::{
+    math_tree::{MathTree, TreeNodeRef},
+    MathToken,
+};
 
 impl MathTree {
     pub(crate) fn find_common_multiplier(multipliers: Vec<TreeNodeRef>) {
@@ -12,7 +15,17 @@ impl MathTree {
         let mut constants = multipliers
             .iter()
             .map(|n| {
-                let mut constants = n.0.borrow().operands.constants();
+                let mut constants =
+                    n.0.borrow()
+                        .operands
+                        .constants()
+                        .map(|(_, n)| {
+                            let MathToken::Constant(c) = n.val() else {
+                                unreachable!()
+                            };
+                            c
+                        })
+                        .collect_vec();
                 debug_assert!(constants.len() <= 1);
                 constants.pop().unwrap()
             })
@@ -22,11 +35,22 @@ impl MathTree {
 
         let variables = multipliers
             .iter()
-            .map(|n| n.0.borrow().operands.variables())
+            .map(|n| {
+                n.0.borrow()
+                    .operands
+                    .variables()
+                    .map(|(_, n)| {
+                        let MathToken::Variable(v) = n.val() else {
+                            unreachable!()
+                        };
+                        v
+                    })
+                    .collect_vec()
+            })
             .flatten()
             .collect_vec();
 
-        let common_variable = Self::find_common_variable(variables, multipliers.len() );
+        let common_variable = Self::find_common_variable(variables, multipliers.len());
     }
 
     fn find_common_variable(variables: Vec<String>, multiplier_len: usize) -> Vec<String> {
@@ -42,7 +66,7 @@ impl MathTree {
 
         let mut common = Vec::new();
         for (var, seen) in seen_variables {
-            if seen == multiplier_len{
+            if seen == multiplier_len {
                 println!("COMMON VAR: {}", var);
                 common.push(var);
             }

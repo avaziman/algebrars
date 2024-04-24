@@ -1,9 +1,13 @@
 use std::{cell::RefCell, io::empty, rc::Rc};
 
-use rust_decimal::Decimal;
+use rust_decimal::{prelude::Zero, Decimal};
 use rust_decimal_macros::dec;
 
-use crate::{lexer::Lexer, operands::Operands, MathToken, OperationToken};
+use crate::{
+    lexer::Lexer,
+    operands::{OperandPos, Operands},
+    MathToken, OperationToken,
+};
 
 #[derive(Debug, Clone)]
 pub struct TreeNode {
@@ -88,12 +92,7 @@ impl TreeNode {
         }
     }
 
-    pub fn operand_iter(
-        &self,
-    ) -> std::iter::Chain<
-        std::iter::Chain<std::slice::Iter<TreeNodeRef>, std::slice::Iter<TreeNodeRef>>,
-        std::slice::Iter<TreeNodeRef>,
-    > {
+    pub fn operand_iter(&self) -> impl Iterator<Item = (OperandPos, &TreeNodeRef)> {
         if self.val == MathToken::Op(OperationToken::Multiply) {
             self.operands.iter_mul()
         } else {
@@ -107,6 +106,8 @@ impl TreeNode {
 pub struct MathTree {
     pub(crate) root: TreeNodeRef,
 }
+
+pub struct TreePos(pub Vec<OperandPos>);
 
 impl MathTree {
     pub fn reverse_polish_notation(lexer: Lexer) -> Vec<MathToken> {
@@ -154,7 +155,33 @@ impl MathTree {
         for token in rpn.into_iter() {
             if let MathToken::Op(op) = &token {
                 let op_info = op.info();
-                let mut operands = nodes.split_off(nodes.len() - op_info.arity as usize);
+
+                if nodes.len() == 1 {
+                    match op {
+                        // allow plus and minus to take one operand only:
+                        // +x = 0+x = x
+                        // -x = 0-x
+                        OperationToken::Add => {
+                            // x stays the same
+                            continue;
+                        }
+                        // allow one operand on minus
+                        OperationToken::Subtract => match nodes.pop().unwrap().val() {
+                            MathToken::Constant(c) => {
+                                nodes.push(TreeNodeRef::constant(-c));
+                                continue;
+                            }
+                            a => {
+                                nodes.push(TreeNodeRef::zero());
+                                nodes.push(TreeNodeRef::new_val(a))
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+
+                let split_at = nodes.len() - op_info.arity as usize;
+                let mut operands = nodes.split_off(split_at);
 
                 if !op_info.orderless {
                     nodes.push(TreeNodeRef::new_vals(token, operands));
@@ -190,6 +217,19 @@ impl MathTree {
         MathTree {
             root: nodes.pop().unwrap(),
         }
+    }
+
+    // O(n) where n is the amount of leafs between the root and the desired remove
+    pub fn remove(&mut self, mut pos: TreePos) {
+        let mut node = self.root.clone();
+        let last_pos = pos.0.pop().expect("empty pos");
+
+        for p in pos.0 {
+            let val = node.0.borrow().operands[p].clone();
+            node = val;
+        }
+
+        node.0.borrow_mut().operands.remove(last_pos);
     }
 }
 

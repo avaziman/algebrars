@@ -9,6 +9,7 @@ pub mod equations;
 pub mod stepper;
 pub mod arithmatic;
 pub mod pattern;
+pub mod cancel_op;
 
 use rust_decimal::prelude::*;
 
