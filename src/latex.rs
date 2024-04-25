@@ -1,7 +1,7 @@
 use crate::{
     lexer::OPERATOR_MAP,
     math_tree::{MathTree, TreeNodeRef},
-    MathToken, OperationToken,
+    MathToken,
 };
 
 impl MathTree {
@@ -46,7 +46,7 @@ impl MathTree {
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::{lexer::Lexer, math_tree::MathTree};
+    use crate::math_tree::MathTree;
 
     #[test]
     pub fn simple_latex() {

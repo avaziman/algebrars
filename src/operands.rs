@@ -89,7 +89,8 @@ impl Operands {
     }
 
     pub fn pop_front(&mut self) -> Option<TreeNodeRef> {
-        Some(self.remove(self.iter().next()?.0))
+        // constants first
+        Some(self.remove(self.iter_mul().next()?.0))
     }
 
     pub fn remove(&mut self, pos: OperandPos) -> TreeNodeRef {

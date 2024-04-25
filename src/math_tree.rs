@@ -1,5 +1,6 @@
 use std::{cell::RefCell, io::empty, rc::Rc};
 
+use itertools::Itertools;
 use rust_decimal::{prelude::Zero, Decimal};
 use rust_decimal_macros::dec;
 
@@ -110,9 +111,39 @@ pub struct MathTree {
 pub struct TreePos(pub Vec<OperandPos>);
 
 impl MathTree {
-    pub fn reverse_polish_notation(lexer: Lexer) -> Vec<MathToken> {
+    // postfix notation
+    pub fn reverse_polish_notation(mut lexer: Lexer) -> Vec<MathToken> {
         let mut output = Vec::new();
         let mut operators: Vec<OperationToken> = Vec::new();
+
+        // there won't be two consecutive operators (not parenthesis) unless its unary +-
+        // (because there must be operand before (and after) operator in prefix
+        let mut insert: Vec<(usize, MathToken)> = Vec::new();
+        let mut last_token = None;
+        for (i, a) in lexer.tokens.iter().enumerate() {
+            if let MathToken::Op(op) = a {
+                // two cases where there can be unary operator:
+                // before nothing: -x
+                // before LParent: (-x)
+                match last_token {
+                    None | Some(MathToken::Op(OperationToken::LParent)) => {
+                        match op {
+                            OperationToken::Subtract | OperationToken::Add => {
+                                insert.push((i, MathToken::Constant(dec!(0))))
+                            }
+                            // OperationToken::Add => todo!(),
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            last_token = Some(a.clone());
+        }
+
+        for (i, a) in insert {
+            lexer.tokens.insert(i, a);
+        }
 
         'outer: for token in lexer.tokens.into_iter() {
             match token {
@@ -153,69 +184,89 @@ impl MathTree {
         let mut nodes: Vec<TreeNodeRef> = Vec::new();
 
         for token in rpn.into_iter() {
-            if let MathToken::Op(op) = &token {
-                let op_info = op.info();
-
-                if nodes.len() == 1 {
-                    match op {
-                        // allow plus and minus to take one operand only:
-                        // +x = 0+x = x
-                        // -x = 0-x
-                        OperationToken::Add => {
-                            // x stays the same
-                            continue;
-                        }
-                        // allow one operand on minus
-                        OperationToken::Subtract => match nodes.pop().unwrap().val() {
-                            MathToken::Constant(c) => {
-                                nodes.push(TreeNodeRef::constant(-c));
-                                continue;
-                            }
-                            a => {
-                                nodes.push(TreeNodeRef::zero());
-                                nodes.push(TreeNodeRef::new_val(a))
-                            }
-                        },
-                        _ => {}
-                    }
-                }
-
-                let split_at = nodes.len() - op_info.arity as usize;
-                let mut operands = nodes.split_off(split_at);
-
-                if !op_info.orderless {
-                    nodes.push(TreeNodeRef::new_vals(token, operands));
-
-                    continue;
-                }
-                // merge operands that use the same operator and are orderless
-                let last_operand = operands.iter().position(|t| t.val() == token);
-
-                if let Some(pos) = last_operand {
-                    let last_operands_node = operands.remove(pos);
-
-                    for operand in operands {
-                        // compare operators
-                        let mut borrow = last_operands_node.0.borrow_mut();
-
-                        if token == operand.val() {
-                            borrow.operands.extend(&operand.0.borrow().operands);
-                        } else {
-                            borrow.operands.add(operand);
-                        }
-                    }
-
-                    nodes.push(last_operands_node);
-                } else {
-                    nodes.push(TreeNodeRef::new_vals(token, operands));
-                }
-            } else {
+            let MathToken::Op(op) = token else {
                 nodes.push(TreeNodeRef::new_val(token));
-            }
+                continue;
+            };
+
+            // if nodes.len() == 1 {
+            //     match op {
+            //         // allow plus and minus to take one operand only (unary):
+            //         // +x = 0+x = x
+            //         // -x = 0-x = -1*x
+            //         OperationToken::Add => {
+            //             // x stays the same
+            //             continue;
+            //         }
+            //         // allow one operand on minus
+            //         OperationToken::Subtract => match nodes.last().unwrap().val() {
+            //             MathToken::Constant(c) => {
+            //                 nodes.pop();
+            //                 nodes.push(TreeNodeRef::constant(-c));
+            //                 continue;
+            //             }
+            //             // operation or variables multiply * (-1)
+            //             _ => {
+            //                 // nodes.pop
+            //                 op = OperationToken::Multiply;
+            //                 token = MathToken::Op(op);
+            //                 // op_info = op.info();
+            //                 nodes.push(TreeNodeRef::constant(dec!(-1)));
+            //             }
+            //         },
+            //         _ => {}
+            //     }
+            // }
+
+            let op_info = op.info();
+            let split_at = nodes.len() - op_info.arity as usize;
+            let mut operands = nodes.split_off(split_at);
         }
 
         MathTree {
             root: nodes.pop().unwrap(),
+        }
+    }
+
+    // merges orderless
+    pub fn add_operand(node: TreeNodeRef, operand: TreeNodeRef) {
+        let mut borrow = node.0.borrow_mut();
+        let mut operands = &mut borrow.operands;
+        let op_token = node.val();
+        let MathToken::Op(op) = op_token else {
+            operands.add(operand);
+            return;
+        };
+
+        if !op.info().orderless {
+            operands.add(operand);
+            return;
+        }
+
+        // merge operands that use the same operator and are orderless
+        let last_operand = borrow
+            .operands
+            .iter()
+            .position(|(_, t)| t.val() == op_token);
+
+        
+        if let Some(pos) = last_operand {
+            let last_operands_node = operands.remove(pos);
+
+            for operand in operands {
+                // compare operators
+                let mut father = last_operands_node.0.borrow_mut();
+
+                if op_token == operand.val() {
+                    father.operands.extend(&operand.0.borrow().operands);
+                } else {
+                    father.operands.add(operand);
+                }
+            }
+
+            node.push(last_operands_node);
+        } else {
+            operands.add(operand);
         }
     }
 
@@ -436,6 +487,7 @@ mod tests {
             TreeNodeRef::new_vals(
                 MathToken::Op(OperationToken::Add),
                 vec![
+                    // TreeNodeRef::new_val(MathToken::Constant(dec!(0))),
                     TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
                     TreeNodeRef::new_vals(
                         MathToken::Op(OperationToken::Pow),
@@ -447,5 +499,19 @@ mod tests {
                 ],
             )
         );
+
+        // let lexer = "-(-x)";
+
+        // assert_eq!(
+        //     MathTree::parse(lexer).root,
+        //     TreeNodeRef::new_vals(
+        //         MathToken::Op(OperationToken::Multiply),
+        //         vec![
+        //             TreeNodeRef::new_val(MathToken::Constant(dec!(-1))),
+        //             TreeNodeRef::new_val(MathToken::Constant(dec!(-1))),
+        //             TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+        //         ],
+        //     )
+        // );
     }
 }

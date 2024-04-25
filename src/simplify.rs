@@ -123,10 +123,10 @@ mod tests {
         simplify_test(
             "-x",
             TreeNodeRef::new_vals(
-                MathToken::Op(OperationToken::Subtract),
+                MathToken::Op(OperationToken::Multiply),
                 vec![
 
-                    TreeNodeRef::constant(dec!(0)),
+                    TreeNodeRef::constant(dec!(-1)),
                     TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
                 ],
             ),
@@ -147,6 +147,9 @@ mod tests {
             TreeNodeRef::constant(dec!(2)),
         );
     
+        // lex: 5 sub ( sub 2 )
+        // pf: 52-- sub(sub(5, 2)) = sub(3) = -3 WRONG!
+        // pf: 5-2- sub(5, sub(2)) = sub(5, -2) = 7 right => -2 needs to be parsed as a decimal not substract
         simplify_test(
             "5-(-2)",
             TreeNodeRef::constant(dec!(7)),

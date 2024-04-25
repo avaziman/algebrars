@@ -66,6 +66,7 @@ impl MathTree {
         // let mut operands_iter = operands.iter().enumerate();
         // for arity 2 only
         // let mut a = operands.pop().unwrap();
+        
 
         let do_op = Self::get_op(&op);
         let mut remaining = Vec::new();
@@ -137,20 +138,13 @@ impl MathTree {
                     // Some(OpDescription::ByOne)
                     _ => {
                         // -(-x) = x
-                        // if let MathToken::Op(OperationToken::Subtract) = b.val() {
-                        //     {
-                        //         let borrow = b.0.borrow();
-                        //         let mut iter = borrow.operand_iter();
-                        //         if iter.next().unwrap().val() == MathToken::Constant(Decimal::ZERO)
-                        //         {
-                        //             let val = iter.next().unwrap();
-                        //             return Some(TreeNodeRef::new_vals(
-                        //                 MathToken::Op(OperationToken::Add),
-                        //                 vec![a.clone(), val.clone()],
-                        //             ))
-                        //         }
-                        //     }
-                        // }
+                        // 0-x = -x = -1 * x
+                        if MathToken::Constant(Decimal::ZERO) == a.val() {
+                            return Some(TreeNodeRef::new_vals(
+                                MathToken::Op(OperationToken::Multiply),
+                                vec![TreeNodeRef::constant(dec!(-1)), b.clone()],
+                            ));
+                        }
                         None
                     }
                 }

@@ -13,7 +13,7 @@ pub mod cancel_op;
 
 use rust_decimal::prelude::*;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum OperationToken {
     Subtract,
     Add,
@@ -66,6 +66,13 @@ impl OperationToken {
             },
             OperationToken::FractionDivide => todo!(),
             OperationToken::LParent | OperationToken::RParent => unreachable!(),
+        }
+    }
+
+    pub fn is_parenthesis(&self) -> bool {
+        match self {
+            OperationToken::LParent | OperationToken::RParent => true,
+            _ => false
         }
     }
 }
