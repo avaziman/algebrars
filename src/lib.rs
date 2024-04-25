@@ -1,15 +1,15 @@
-pub mod math_tree;
+pub mod arithmatic;
+pub mod cancel_op;
+pub mod equations;
 pub mod expand;
+pub mod factorization;
 pub mod latex;
 pub mod lexer;
-pub mod simplify;
+pub mod math_tree;
 pub mod operands;
-pub mod factorization;
-pub mod equations;
-pub mod stepper;
-pub mod arithmatic;
 pub mod pattern;
-pub mod cancel_op;
+pub mod simplify;
+pub mod stepper;
 
 use rust_decimal::prelude::*;
 
@@ -72,7 +72,7 @@ impl OperationToken {
     pub fn is_parenthesis(&self) -> bool {
         match self {
             OperationToken::LParent | OperationToken::RParent => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -82,4 +82,13 @@ pub enum MathToken {
     Constant(Decimal),
     Variable(String),
     Op(OperationToken),
+}
+
+impl MathToken {
+    pub fn is_operator(&self) -> bool {
+        match self {
+            MathToken::Op(_) => true,
+            _ => false,
+        }
+    }
 }

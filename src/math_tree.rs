@@ -231,43 +231,17 @@ impl MathTree {
     // merges orderless
     pub fn add_operand(node: TreeNodeRef, operand: TreeNodeRef) {
         let mut borrow = node.0.borrow_mut();
-        let mut operands = &mut borrow.operands;
         let op_token = node.val();
-        let MathToken::Op(op) = op_token else {
-            operands.add(operand);
-            return;
-        };
 
-        if !op.info().orderless {
-            operands.add(operand);
-            return;
-        }
-
-        // merge operands that use the same operator and are orderless
-        let last_operand = borrow
-            .operands
-            .iter()
-            .position(|(_, t)| t.val() == op_token);
-
-        
-        if let Some(pos) = last_operand {
-            let last_operands_node = operands.remove(pos);
-
-            for operand in operands {
-                // compare operators
-                let mut father = last_operands_node.0.borrow_mut();
-
-                if op_token == operand.val() {
-                    father.operands.extend(&operand.0.borrow().operands);
-                } else {
-                    father.operands.add(operand);
-                }
+        if let MathToken::Op(op) = op_token {
+            // merge operands that use the same operator and are orderless
+            if op.info().orderless && node.val() == op_token {
+                borrow.operands.extend(&node.0.borrow().operands);
+                return;
             }
-
-            node.push(last_operands_node);
-        } else {
-            operands.add(operand);
         }
+
+        borrow.operands.add(operand);
     }
 
     // O(n) where n is the amount of leafs between the root and the desired remove
