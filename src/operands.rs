@@ -17,8 +17,9 @@ pub struct Operands {
     // represent where each section of the vector starts
     operators: Vec<TreeNodeRef>,
     constants: Vec<TreeNodeRef>,
+    // insert_order: Vec<OperandPos>,
 }
-
+// TODO: think about ordered operands
 
 type OperandIt<'a> = Map<
     Enumerate<Iter<'a, TreeNodeRef>>,
@@ -29,6 +30,7 @@ type OperandIt<'a> = Map<
 //         self.childs.fmt(f)
 //     }
 // }
+#[derive(Debug, Clone)]
 pub enum OperandPos {
     Constants(usize),
     Operators(usize),

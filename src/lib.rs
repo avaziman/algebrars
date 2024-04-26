@@ -10,6 +10,7 @@ pub mod operands;
 pub mod pattern;
 pub mod simplify;
 pub mod stepper;
+pub mod function;
 
 use rust_decimal::prelude::*;
 

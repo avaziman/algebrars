@@ -86,8 +86,10 @@ impl TreeNode {
         }
 
         node
+   
     }
-    
+
+
     // merges orderless
     pub fn add_operand(&mut self, operand: TreeNodeRef) {
         let op_token = self.val.clone();
