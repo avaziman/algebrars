@@ -62,7 +62,7 @@ impl MathTree {
         };
 
         let mut borrow = node.0.borrow_mut();
-        let operands = &mut borrow.operands;
+        // let operands = &mut borrow.operands;
         // let mut operands_iter = operands.iter().enumerate();
         // for arity 2 only
         // let mut a = operands.pop().unwrap();
@@ -71,19 +71,20 @@ impl MathTree {
         let do_op = Self::get_op(&op);
         let mut remaining = Vec::new();
         loop {
-            if operands.len() < 2 {
+            if borrow.operands.len() < 2 {
                 break;
             }
 
-            let a = operands.pop_front().unwrap();
-            let b = operands.pop_front().unwrap();
+            let a = borrow.operands.pop_front().unwrap();
+            let b = borrow.operands.pop_front().unwrap();
 
             let desc = get_description(&a, &b, op.info().orderless);
             let step = Step::PerformOp(desc.clone());
-            if let Some(res) = do_op(&a, &b, desc) {
+              if let Some(res) = do_op(&a, &b, desc) {
                 steps.step((&a, &b), &res, step);
                 // a = res.clone();
-                operands.add(res);
+                // operands.add(res);
+                borrow.add_operand(res);
             } else {
                 remaining.push(a);
                 remaining.push(b);
@@ -91,11 +92,11 @@ impl MathTree {
         }
 
         for r in remaining {
-            operands.add(r);
+            borrow.operands.add(r);
         }
 
-        if operands.len() == 1 {
-            let val = operands.pop_front().unwrap();
+        if borrow.operands.len() == 1 {
+            let val = borrow.operands.pop_front().unwrap();
             std::mem::drop(borrow);
 
             *node = val;

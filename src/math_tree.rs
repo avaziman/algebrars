@@ -25,12 +25,8 @@ impl PartialEq for TreeNodeRef {
     fn eq(&self, other: &TreeNodeRef) -> bool {
         self.0.borrow().val == other.0.borrow().val
             && self.0.borrow().operands == other.0.borrow().operands
-        // && self.0.borrow().left == other.0.borrow().left
-        // && self.0.borrow().right == other.0.borrow().right
     }
 }
-
-impl Eq for TreeNodeRef {}
 
 impl std::fmt::Debug for TreeNodeRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -55,6 +51,10 @@ impl TreeNodeRef {
         Self::new_val(MathToken::Constant(dec))
     }
 
+    pub fn add_operand(&self, operand: TreeNodeRef) {
+        self.0.borrow_mut().add_operand(operand);
+    }
+
     pub fn zero() -> Self {
         Self::constant(dec!(0))
     }
@@ -66,33 +66,43 @@ impl TreeNodeRef {
     pub fn two() -> Self {
         Self::constant(dec!(2))
     }
-    //  pub fn right(&self) -> Option<TreeNodeRef> {
-    //     self.0.borrow().left.clone()
-    // }
-
-    //     pub fn left(&self) ->  Option<TreeNodeRef> {
-    //     self.0.borrow().right.clone()
-    // }
+    
 }
 
 impl TreeNode {
     pub fn new_val(token: MathToken) -> TreeNode {
         Self {
             val: token,
-            // left: None,
-            // right: None,
             operands: Operands::new(),
         }
     }
 
     pub fn new_vals(token: MathToken, childs: Vec<TreeNodeRef>) -> TreeNode {
-        let operands = Operands::from_iter(childs);
-        Self {
-            val: token,
-            operands,
-        }
-    }
+        // let operands = Operands::from_iter(childs);
+        let mut node = TreeNode::new_val(token);
 
+        for o in childs {
+            node.add_operand(o);
+        }
+
+        node
+    }
+    
+    // merges orderless
+    pub fn add_operand(&mut self, operand: TreeNodeRef) {
+        let op_token = self.val.clone();
+
+        if let MathToken::Op(op) = op_token {
+            // merge operands that use the same operator and are orderless
+            if op.info().orderless && operand.val() == op_token {
+                self.operands.extend(&operand.0.borrow().operands);
+                return;
+            }
+        }
+
+        // not mergeable, add regular operand
+        self.operands.add(operand);
+    }
     pub fn operand_iter(&self) -> impl Iterator<Item = (OperandPos, &TreeNodeRef)> {
         if self.val == MathToken::Op(OperationToken::Multiply) {
             self.operands.iter_mul()
@@ -217,31 +227,15 @@ impl MathTree {
             //         _ => {}
             //     }
             // }
-
             let op_info = op.info();
             let split_at = nodes.len() - op_info.arity as usize;
-            let mut operands = nodes.split_off(split_at);
+            let operands = nodes.split_off(split_at);
+            nodes.push(TreeNodeRef::new_vals(token, operands));
         }
 
         MathTree {
             root: nodes.pop().unwrap(),
         }
-    }
-
-    // merges orderless
-    pub fn add_operand(node: TreeNodeRef, operand: TreeNodeRef) {
-        let mut borrow = node.0.borrow_mut();
-        let op_token = node.val();
-
-        if let MathToken::Op(op) = op_token {
-            // merge operands that use the same operator and are orderless
-            if op.info().orderless && node.val() == op_token {
-                borrow.operands.extend(&node.0.borrow().operands);
-                return;
-            }
-        }
-
-        borrow.operands.add(operand);
     }
 
     // O(n) where n is the amount of leafs between the root and the desired remove
@@ -385,8 +379,8 @@ mod tests {
                         MathToken::Op(OperationToken::Add),
                         vec![
                             TreeNodeRef::new_val(MathToken::Variable("x".to_string())),
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(1))),
                             TreeNodeRef::new_val(MathToken::Constant(dec!(4))),
+                            TreeNodeRef::new_val(MathToken::Constant(dec!(1))),
                         ]
                     )
                 ],

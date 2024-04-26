@@ -1,12 +1,10 @@
-use itertools::Itertools;
-use rust_decimal::{Decimal, MathematicalOps};
-use rust_decimal_macros::dec;
+
+
 
 use crate::{
     math_tree::{MathTree, TreeNodeRef},
-    operands::Operands,
     stepper::Steps,
-    MathToken, OperationToken,
+    MathToken,
 };
 
 // since contrary to addition, substraction is not an orderless operation,
@@ -20,26 +18,31 @@ impl MathTree {
 
     fn simplify_node(node: &mut TreeNodeRef, steps: &mut Steps) {
         // let node = &mut self.root;
-        let MathToken::Op(op) = node.val() else {
+        let MathToken::Op(_) = node.val() else {
             return;
         };
 
         let mut borrow = node.0.borrow_mut();
-        let operands = &mut borrow.operands;
 
-        let operators = operands.remove_operators();
+        let operators = borrow.operands.remove_operators();
         // let mut multipliers = Vec::new();
         for mut op in operators {
             Self::simplify_node(&mut op, steps);
             // if let MathToken::Op(OperationToken::Multiply) = op.val() {
             //     multipliers.push(op.clone());
             // }
-            operands.add(op);
+            borrow.add_operand(op);
         }
 
+        // println!("simplifying {:#?}", borrow);
+        let operands_len = borrow.operands.len();
         std::mem::drop(borrow);
         // Self::find_common_multiplier(multipliers);
         Self::perform_op(node, steps);
+
+        if node.0.borrow().operands.len() > operands_len {
+            Self::perform_op(node, steps);
+        }
 
         // self.
     }
@@ -142,17 +145,11 @@ mod tests {
             TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
         );
 
-        simplify_test(
-            "-(-2)",
-            TreeNodeRef::constant(dec!(2)),
-        );
-    
+        simplify_test("-(-2)", TreeNodeRef::constant(dec!(2)));
+
         // lex: 5 sub ( sub 2 )
         // pf: 52-- sub(sub(5, 2)) = sub(3) = -3 WRONG!
         // pf: 5-2- sub(5, sub(2)) = sub(5, -2) = 7 right => -2 needs to be parsed as a decimal not substract
-        simplify_test(
-            "5-(-2)",
-            TreeNodeRef::constant(dec!(7)),
-        );
+        simplify_test("5-(-2)", TreeNodeRef::constant(dec!(7)));
     }
 }

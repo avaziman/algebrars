@@ -8,9 +8,8 @@ use std::{
 };
 
 use itertools::Itertools;
-use rust_decimal::Decimal;
 
-use crate::{math_tree::TreeNodeRef, MathToken, OperationToken};
+use crate::{math_tree::TreeNodeRef, MathToken};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Operands {
@@ -20,16 +19,6 @@ pub struct Operands {
     constants: Vec<TreeNodeRef>,
 }
 
-impl FromIterator<TreeNodeRef> for Operands {
-    fn from_iter<T: IntoIterator<Item = TreeNodeRef>>(iter: T) -> Self {
-        let mut operands = Operands::new();
-        for i in iter {
-            operands.add(i)
-        }
-
-        operands
-    }
-}
 
 type OperandIt<'a> = Map<
     Enumerate<Iter<'a, TreeNodeRef>>,
