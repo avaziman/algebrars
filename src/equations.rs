@@ -42,7 +42,7 @@ impl Equation {
 
     }
 
-    fn move_left(tree_pos: TreePos) {}
+    fn move_left(_tree_pos: TreePos) {}
     
     pub fn flip_sides(&mut self) {
         std::mem::swap(&mut self.left, &mut self.right);

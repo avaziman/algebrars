@@ -1,7 +1,6 @@
-use std::{cell::RefCell, io::empty, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
-use itertools::Itertools;
-use rust_decimal::{prelude::Zero, Decimal};
+use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
@@ -9,7 +8,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     lexer::Lexer,
-    operands::{OperandPos, Operands, OperandsIt},
+    operands::{OperandPos, Operands},
     MathToken, MathTokenType, OperationToken,
 };
 
@@ -41,7 +40,7 @@ impl std::fmt::Debug for TreeNodeRef {
     }
 }
 
-// #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl TreeNodeRef {
     pub fn new_val(token: MathToken) -> Self {
         Self(Rc::new(RefCell::new(TreeNode::new_val(token))))
@@ -139,12 +138,37 @@ impl TreeNode {
 }
 
 // abstract syntax tree
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MathTree {
     pub(crate) root: TreeNodeRef,
 }
 
 pub struct TreePos(pub Vec<OperandPos>);
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+impl MathTree {
+    pub fn parse(str: &str) -> Self {
+        let rpn = Self::reverse_polish_notation(Lexer::new(str));
+        let mut nodes: Vec<TreeNodeRef> = Vec::new();
+
+        for token in rpn.into_iter() {
+            let Some(op) = token.operation else {
+                nodes.push(TreeNodeRef::new_val(token));
+                continue;
+            };
+
+            let op_info = op.info();
+            let split_at = nodes.len() - op_info.arity as usize;
+            let operands = nodes.split_off(split_at);
+            nodes.push(TreeNodeRef::new_vals(token, operands));
+        }
+
+        MathTree {
+            root: nodes.pop().unwrap(),
+        }
+    }
+}
 
 impl MathTree {
     // postfix notation
@@ -213,58 +237,14 @@ impl MathTree {
             }
         }
 
-        output.extend(operators.into_iter().map(|op| MathToken::operator(op)).rev());
+        output.extend(
+            operators
+                .into_iter()
+                .map(|op| MathToken::operator(op))
+                .rev(),
+        );
 
         output
-    }
-
-    pub fn parse(str: &str) -> Self {
-        let rpn = Self::reverse_polish_notation(Lexer::new(str));
-        let mut nodes: Vec<TreeNodeRef> = Vec::new();
-
-        for token in rpn.into_iter() {
-            let Some(op) = token.operation else {
-                nodes.push(TreeNodeRef::new_val(token));
-                continue;
-            };
-
-            // if nodes.len() == 1 {
-            //     match op {
-            //         // allow plus and minus to take one operand only (unary):
-            //         // +x = 0+x = x
-            //         // -x = 0-x = -1*x
-            //         OperationToken::Add => {
-            //             // x stays the same
-            //             continue;
-            //         }
-            //         // allow one operand on minus
-            //         OperationToken::Subtract => match nodes.last().unwrap().val() {
-            //             MathToken::Constant(c) => {
-            //                 nodes.pop();
-            //                 nodes.push(TreeNodeRef::constant(-c));
-            //                 continue;
-            //             }
-            //             // operation or variables multiply * (-1)
-            //             _ => {
-            //                 // nodes.pop
-            //                 op = OperationToken::Multiply;
-            //                 token = MathToken::Op(op);
-            //                 // op_info = op.info();
-            //                 nodes.push(TreeNodeRef::constant(dec!(-1)));
-            //             }
-            //         },
-            //         _ => {}
-            //     }
-            // }
-            let op_info = op.info();
-            let split_at = nodes.len() - op_info.arity as usize;
-            let operands = nodes.split_off(split_at);
-            nodes.push(TreeNodeRef::new_vals(token, operands));
-        }
-
-        MathTree {
-            root: nodes.pop().unwrap(),
-        }
     }
 
     // O(n) where n is the amount of leafs between the root and the desired remove
@@ -278,6 +258,18 @@ impl MathTree {
         }
 
         node.borrow_mut().operands.remove(last_pos);
+    }
+
+    pub fn copy(node: &TreeNodeRef) -> TreeNodeRef {
+        // let res = TreeNodeRef::new_vals(node.val(), childs)
+        let mut children = Vec::new();
+        for (_i, c) in node.0.borrow().operand_iter() {
+            children.push(
+                Self::copy(c)
+            );
+        }
+
+        TreeNodeRef::new_vals(node.val(), children)
     }
 }
 

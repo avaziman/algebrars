@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::{
     math_tree::{MathTree, TreeNodeRef},
-    MathToken, MathTokenType,
 };
 
 impl MathTree {
@@ -20,9 +19,9 @@ impl MathTree {
     }
 
     fn node_like(
-        check_node: &TreeNodeRef,
-        pattern_node: &TreeNodeRef,
-        variables: &mut HashMap<String, TreeNodeRef>,
+        _check_node: &TreeNodeRef,
+        _pattern_node: &TreeNodeRef,
+        _variables: &mut HashMap<String, TreeNodeRef>,
     ) -> bool {
         todo!()
         // match pattern_node.val().kind {

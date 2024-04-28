@@ -6,13 +6,12 @@ use rust_decimal_macros::dec;
 
 use crate::{
     math_tree::{MathTree, TreeNodeRef},
-    MathToken,
 };
 
 impl MathTree {
     pub(crate) fn find_common_multiplier(multipliers: Vec<TreeNodeRef>) {
         // grouping terms is done only after arithmatics, so we will have at most one constant operand per multiplication
-        let mut constants = multipliers
+        let constants = multipliers
             .iter()
             .map(|n| {
                 let mut constants =
@@ -32,7 +31,7 @@ impl MathTree {
             })
             .collect_vec();
 
-        let constant_multiplier = Self::find_common_constant(constants);
+        let _constant_multiplier = Self::find_common_constant(constants);
 
         let variables = multipliers
             .iter()
@@ -51,7 +50,7 @@ impl MathTree {
             .flatten()
             .collect_vec();
 
-        let common_variable = Self::find_common_variable(variables, multipliers.len());
+        let _common_variable = Self::find_common_variable(variables, multipliers.len());
     }
 
     fn find_common_variable(variables: Vec<String>, multiplier_len: usize) -> Vec<String> {

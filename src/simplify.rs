@@ -4,7 +4,6 @@
 use crate::{
     math_tree::{MathTree, TreeNodeRef},
     stepper::Steps,
-    MathToken,
 };
 
 // since contrary to addition, substraction is not an orderless operation,

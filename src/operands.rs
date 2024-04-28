@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use crate::{math_tree::TreeNodeRef, MathToken, MathTokenType};
+use crate::{math_tree::TreeNodeRef, MathTokenType};
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -36,21 +36,18 @@ pub type OperandsIt<'a> = Chain<Chain<OperandIt<'a>, OperandIt<'a>>, OperandIt<'
 //         self.childs.fmt(f)
 //     }
 // }
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum OperandPos {
-    Constants(usize),
-    Operators(usize),
-    Variables(usize),
-}
+pub struct OperandPos(MathTokenType, usize);
 
 impl Index<OperandPos> for Operands {
     type Output = TreeNodeRef;
 
     fn index(&self, index: OperandPos) -> &Self::Output {
-        match index {
-            OperandPos::Constants(p) => &self.constants[p],
-            OperandPos::Operators(p) => &self.operators[p],
-            OperandPos::Variables(p) => &self.variables[p],
+        match index.0 {
+            MathTokenType::Constant => &self.constants[index.1],
+            MathTokenType::Operator => &self.operators[index.1],
+            MathTokenType::Variable => &self.variables[index.1],
         }
     }
 }
@@ -91,10 +88,10 @@ impl Operands {
     }
 
     pub fn remove(&mut self, pos: OperandPos) -> TreeNodeRef {
-        match pos {
-            OperandPos::Constants(p) => self.constants.remove(p),
-            OperandPos::Operators(p) => self.operators.remove(p),
-            OperandPos::Variables(p) => self.variables.remove(p),
+        match pos.0 {
+            MathTokenType::Constant => self.constants.remove(pos.1),
+            MathTokenType::Operator => self.operators.remove(pos.1),
+            MathTokenType::Variable => self.variables.remove(pos.1),
         }
     }
 
@@ -159,21 +156,21 @@ impl Operands {
         self.constants
             .iter()
             .enumerate()
-            .map(|(i, c)| (OperandPos::Constants(i), c))
+            .map(|(i, c)| (OperandPos(MathTokenType::Constant, i), c))
     }
 
     pub fn operators(&self) -> OperandIt {
         self.operators
             .iter()
             .enumerate()
-            .map(|(i, c)| (OperandPos::Operators(i), c))
+            .map(|(i, c)| (OperandPos(MathTokenType::Operator, i), c))
     }
 
     pub fn variables(&self) -> OperandIt {
         self.variables
             .iter()
             .enumerate()
-            .map(|(i, c)| (OperandPos::Variables(i), c))
+            .map(|(i, c)| (OperandPos(MathTokenType::Variable, i), c))
     }
 
     pub fn remove_operators(&mut self) -> Vec<TreeNodeRef> {

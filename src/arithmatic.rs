@@ -108,7 +108,7 @@ impl MathTree {
         // let desc = get_description(a, b);
         match op {
             OperationToken::Add => {
-                |a: &TreeNodeRef, b, desc| match desc {
+                |a: &TreeNodeRef, _b, desc| match desc {
                     Some(OpDescription::BothConstants(c1, c2)) => {
                         Some(TreeNodeRef::constant(c1 + c2))
                     }
@@ -149,7 +149,7 @@ impl MathTree {
                 }
             }
             OperationToken::Multiply => {
-                |a: &TreeNodeRef, b: &TreeNodeRef, desc| match desc {
+                |a: &TreeNodeRef, _b: &TreeNodeRef, desc| match desc {
                     Some(OpDescription::BothConstants(c1, c2)) => {
                         Some(TreeNodeRef::constant(c1 * c2))
                     }
@@ -177,7 +177,7 @@ impl MathTree {
                 }
             }
             OperationToken::Divide => {
-                |a: &TreeNodeRef, b, desc| match desc {
+                |_a: &TreeNodeRef, _b, desc| match desc {
                     Some(OpDescription::BothConstants(c1, c2)) => {
                         Some(TreeNodeRef::constant(c1 / c2))
                     }
@@ -191,7 +191,7 @@ impl MathTree {
                 }
             }
             OperationToken::Pow => {
-                |a: &TreeNodeRef, b, desc| match desc {
+                |_a: &TreeNodeRef, _b, desc| match desc {
                     Some(OpDescription::BothConstants(c1, c2)) => {
                         Some(TreeNodeRef::constant(c1.powd(c2)))
                     }

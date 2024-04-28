@@ -1,7 +1,6 @@
 use crate::{
     lexer::OPERATOR_MAP,
-    math_tree::{MathTree, TreeNodeRef},
-    MathToken, MathTokenType,
+    math_tree::{MathTree, TreeNodeRef}, MathTokenType,
 };
 
 impl MathTree {

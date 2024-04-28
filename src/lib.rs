@@ -87,13 +87,23 @@ impl OperationToken {
 // pub struct ShortString([char; 16]);
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct MathToken {
     pub kind: MathTokenType,
     pub constant: Option<Decimal>,
     // #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
     pub variable: Option<String>,
     pub operation: Option<OperationToken>,
+}
+
+impl std::fmt::Debug for MathToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.kind {
+            MathTokenType::Constant => write!(f, "{}", self.constant.unwrap()),
+            MathTokenType::Variable => write!(f, "{}", self.variable.as_ref().unwrap()),
+            MathTokenType::Operator => write!(f, "{:?}", self.operation),
+        }
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -160,8 +170,3 @@ impl MathToken {
         }
     }
 }
-
-// #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-// pub fn token_to_js() -> JsValue {
-//     serde_wasm_bindgen::to_value(token).unwrap()
-// }

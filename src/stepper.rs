@@ -5,7 +5,7 @@
 
 use crate::{
     arithmatic::OpDescription,
-    math_tree::{MathTree, TreeNodeRef},
+    math_tree::{TreeNodeRef},
 };
 
 type NodePos = Vec<usize>;
@@ -23,7 +23,7 @@ impl Steps {
     pub fn new() -> Self {
         Self(Vec::new())
     }
-    pub fn step(&mut self, operands: (&TreeNodeRef, &TreeNodeRef), res: &TreeNodeRef, step: Step) {
+    pub fn step(&mut self, _operands: (&TreeNodeRef, &TreeNodeRef), _res: &TreeNodeRef, step: Step) {
         self.0.push(step);
     }
 }
