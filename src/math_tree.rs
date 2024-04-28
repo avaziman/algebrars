@@ -88,9 +88,15 @@ impl TreeNodeRef {
 // #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl TreeNode {
     pub fn new_val(token: MathToken) -> TreeNode {
+        let mut orderless = false;
+        if let Some(op) = token.operation {
+            if op.info().orderless {
+                orderless = true;
+            }
+        }
         Self {
             val: token,
-            operands: Operands::new(),
+            operands: Operands::new(orderless),
         }
     }
 
@@ -264,9 +270,7 @@ impl MathTree {
         // let res = TreeNodeRef::new_vals(node.val(), childs)
         let mut children = Vec::new();
         for (_i, c) in node.0.borrow().operand_iter() {
-            children.push(
-                Self::copy(c)
-            );
+            children.push(Self::copy(c));
         }
 
         TreeNodeRef::new_vals(node.val(), children)

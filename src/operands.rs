@@ -18,10 +18,9 @@ use crate::{math_tree::TreeNodeRef, MathTokenType};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Operands {
     variables: Vec<TreeNodeRef>,
-    // represent where each section of the vector starts
     operators: Vec<TreeNodeRef>,
     constants: Vec<TreeNodeRef>,
-    // insert_order: Vec<OperandPos>,
+    insert_order: Option<Vec<OperandPos>>,
 }
 // TODO: think about ordered operands
 
@@ -37,7 +36,7 @@ pub type OperandsIt<'a> = Chain<Chain<OperandIt<'a>, OperandIt<'a>>, OperandIt<'
 //     }
 // }
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct OperandPos(MathTokenType, usize);
 
 impl Index<OperandPos> for Operands {
@@ -54,26 +53,26 @@ impl Index<OperandPos> for Operands {
 
 // pub type Operands = BTreeSet<TreeNodeRef>;
 impl Operands {
-    pub fn new() -> Self {
+    pub fn new(orderless: bool) -> Self {
         Self {
             constants: Vec::new(),
             operators: Vec::new(),
             variables: Vec::new(),
+            insert_order: if orderless { None } else { Some(Vec::new()) },
         }
     }
 
     pub fn add(&mut self, node: TreeNodeRef) {
-        match node.val().kind {
-            MathTokenType::Constant => {
-                self.constants.push(node);
-            }
-            MathTokenType::Variable => {
-                self.variables.push(node);
-            }
-            MathTokenType::Operator => {
-                self.operators.push(node);
-            }
+        let vec = match node.val().kind {
+            MathTokenType::Constant => &mut self.constants,
+            MathTokenType::Variable => &mut self.variables,
+            MathTokenType::Operator => &mut self.operators,
+        };
+
+        if let Some(order) = &mut self.insert_order {
+            order.push(OperandPos(node.val().kind, vec.len()));
         }
+        vec.push(node);
     }
 
     pub fn extend(&mut self, other: &Self) {
@@ -129,6 +128,14 @@ impl Operands {
         self.constants()
             .chain(self.variables())
             .chain(self.operators())
+    }
+
+    pub fn iter_order<'a>(
+        &'a self,
+    ) -> Option<Map<std::ops::Range<usize>, impl FnMut(usize) -> &'a TreeNodeRef>> {
+        let order = self.insert_order.as_ref()?;
+
+        Some((0..self.len()).map(|i| &self[order[i].clone()]))
     }
 
     pub fn len(&self) -> usize {

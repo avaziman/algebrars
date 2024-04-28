@@ -1,15 +1,22 @@
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
+
 use crate::{
     lexer::OPERATOR_MAP,
     math_tree::{MathTree, TreeNodeRef}, MathTokenType,
 };
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl MathTree {
     pub fn to_latex(&self) -> String {
         let mut res = String::new();
-
+    
         Self::to_latex_node(self.root.clone(), &mut res);
         res
     }
+}
+
+impl MathTree {
 
     fn to_latex_node(node: TreeNodeRef, res: &mut String) {
         let borrow = node.borrow();

@@ -13,7 +13,7 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Function {
-    expression: MathTree,
+    pub expression: MathTree,
     variable: Option<Vec<(TreeNodeRef, OperandPos)>>,
 }
 
