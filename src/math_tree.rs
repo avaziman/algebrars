@@ -3,37 +3,45 @@ use std::{cell::RefCell, io::empty, rc::Rc};
 use itertools::Itertools;
 use rust_decimal::{prelude::Zero, Decimal};
 use rust_decimal_macros::dec;
+use serde::{Deserialize, Serialize};
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 use crate::{
     lexer::Lexer,
-    operands::{OperandPos, Operands},
-    MathToken, OperationToken,
+    operands::{OperandPos, Operands, OperandsIt},
+    MathToken, MathTokenType, OperationToken,
 };
 
-#[derive(Debug, Clone)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TreeNode {
     val: MathToken,
     // pub childs: Vec<TreeNodeRef>, // left: Option<TreeNodeRef>,
     // right: Option<TreeNodeRef>,
+    // #[cfg(target_arch = "wasm32")]
+    // #[wasm_bindgen(getter_with_clone)]
+    // #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
     pub operands: Operands,
 }
 
-#[derive(Clone)]
-pub struct TreeNodeRef(pub Rc<RefCell<TreeNode>>);
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct TreeNodeRef(Rc<RefCell<TreeNode>>);
 
 impl PartialEq for TreeNodeRef {
     fn eq(&self, other: &TreeNodeRef) -> bool {
-        self.0.borrow().val == other.0.borrow().val
-            && self.0.borrow().operands == other.0.borrow().operands
+        self.borrow().val == other.borrow().val && self.borrow().operands == other.borrow().operands
     }
 }
 
 impl std::fmt::Debug for TreeNodeRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.borrow().fmt(f)
+        self.borrow().fmt(f)
     }
 }
 
+// #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl TreeNodeRef {
     pub fn new_val(token: MathToken) -> Self {
         Self(Rc::new(RefCell::new(TreeNode::new_val(token))))
@@ -43,16 +51,16 @@ impl TreeNodeRef {
         Self(Rc::new(RefCell::new(TreeNode::new_vals(token, childs))))
     }
 
-    pub fn val(&self) -> MathToken {
-        self.0.borrow().val.clone()
+    pub fn constant(dec: Decimal) -> Self {
+        Self::new_val(MathToken::constant(dec))
     }
 
-    pub fn constant(dec: Decimal) -> Self {
-        Self::new_val(MathToken::Constant(dec))
+    pub fn val(&self) -> MathToken {
+        self.borrow().val.clone()
     }
 
     pub fn add_operand(&self, operand: TreeNodeRef) {
-        self.0.borrow_mut().add_operand(operand);
+        self.borrow_mut().add_operand(operand);
     }
 
     pub fn zero() -> Self {
@@ -66,9 +74,19 @@ impl TreeNodeRef {
     pub fn two() -> Self {
         Self::constant(dec!(2))
     }
-    
 }
 
+impl TreeNodeRef {
+    pub fn borrow(&self) -> std::cell::Ref<'_, TreeNode> {
+        self.0.borrow()
+    }
+
+    pub fn borrow_mut(&self) -> std::cell::RefMut<'_, TreeNode> {
+        self.0.borrow_mut()
+    }
+}
+
+// #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl TreeNode {
     pub fn new_val(token: MathToken) -> TreeNode {
         Self {
@@ -86,18 +104,16 @@ impl TreeNode {
         }
 
         node
-   
     }
-
 
     // merges orderless
     pub fn add_operand(&mut self, operand: TreeNodeRef) {
         let op_token = self.val.clone();
 
-        if let MathToken::Op(op) = op_token {
+        if let Some(op) = op_token.operation {
             // merge operands that use the same operator and are orderless
             if op.info().orderless && operand.val() == op_token {
-                self.operands.extend(&operand.0.borrow().operands);
+                self.operands.extend(&operand.borrow().operands);
                 return;
             }
         }
@@ -105,8 +121,16 @@ impl TreeNode {
         // not mergeable, add regular operand
         self.operands.add(operand);
     }
+
+    // #[wasm_bindgen(getter)]
+    pub fn operands(&self) -> Operands {
+        self.operands.clone()
+    }
+}
+
+impl TreeNode {
     pub fn operand_iter(&self) -> impl Iterator<Item = (OperandPos, &TreeNodeRef)> {
-        if self.val == MathToken::Op(OperationToken::Multiply) {
+        if self.val == MathToken::operator(OperationToken::Multiply) {
             self.operands.iter_mul()
         } else {
             self.operands.iter()
@@ -115,7 +139,7 @@ impl TreeNode {
 }
 
 // abstract syntax tree
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MathTree {
     pub(crate) root: TreeNodeRef,
 }
@@ -131,23 +155,25 @@ impl MathTree {
         // there won't be two consecutive operators (not parenthesis) unless its unary +-
         // (because there must be operand before (and after) operator in prefix
         let mut insert: Vec<(usize, MathToken)> = Vec::new();
-        let mut last_token = None;
+        let mut last_token: Option<MathToken> = None;
         for (i, a) in lexer.tokens.iter().enumerate() {
-            if let MathToken::Op(op) = a {
+            if let Some(op) = a.operation {
                 // two cases where there can be unary operator:
                 // before nothing: -x
                 // before LParent: (-x)
-                match last_token {
-                    None | Some(MathToken::Op(OperationToken::LParent)) => {
-                        match op {
-                            OperationToken::Subtract | OperationToken::Add => {
-                                insert.push((i, MathToken::Constant(dec!(0))))
-                            }
-                            // OperationToken::Add => todo!(),
-                            _ => {}
+                let unary = match last_token {
+                    Some(s) => s.operation == Some(OperationToken::LParent),
+                    None => true,
+                };
+
+                if unary {
+                    match op {
+                        OperationToken::Subtract | OperationToken::Add => {
+                            insert.push((i, MathToken::constant(dec!(0))))
                         }
+                        // OperationToken::Add => todo!(),
+                        _ => {}
                     }
-                    _ => {}
                 }
             }
             last_token = Some(a.clone());
@@ -158,15 +184,16 @@ impl MathTree {
         }
 
         'outer: for token in lexer.tokens.into_iter() {
-            match token {
-                MathToken::Constant(_) | MathToken::Variable(_) => output.push(token),
-                MathToken::Op(op) => {
+            match token.kind {
+                MathTokenType::Constant | MathTokenType::Variable => output.push(token),
+                MathTokenType::Operator => {
+                    let op = token.operation.unwrap();
                     if op == OperationToken::RParent {
                         while let Some(last_op) = operators.pop() {
                             if last_op == OperationToken::LParent {
                                 continue 'outer;
                             } else {
-                                output.push(MathToken::Op(last_op));
+                                output.push(MathToken::operator(last_op));
                             }
                         }
                         panic!("Parentheses Mismatch");
@@ -175,7 +202,7 @@ impl MathTree {
                             if *last_op != OperationToken::LParent
                                 && op.info().precedence <= last_op.info().precedence
                             {
-                                output.push(MathToken::Op(operators.pop().unwrap()));
+                                output.push(MathToken::operator(operators.pop().unwrap()));
                             } else {
                                 break;
                             }
@@ -186,7 +213,7 @@ impl MathTree {
             }
         }
 
-        output.extend(operators.into_iter().map(|op| MathToken::Op(op)).rev());
+        output.extend(operators.into_iter().map(|op| MathToken::operator(op)).rev());
 
         output
     }
@@ -196,7 +223,7 @@ impl MathTree {
         let mut nodes: Vec<TreeNodeRef> = Vec::new();
 
         for token in rpn.into_iter() {
-            let MathToken::Op(op) = token else {
+            let Some(op) = token.operation else {
                 nodes.push(TreeNodeRef::new_val(token));
                 continue;
             };
@@ -246,11 +273,11 @@ impl MathTree {
         let last_pos = pos.0.pop().expect("empty pos");
 
         for p in pos.0 {
-            let val = node.0.borrow().operands[p].clone();
+            let val = node.borrow().operands[p].clone();
             node = val;
         }
 
-        node.0.borrow_mut().operands.remove(last_pos);
+        node.borrow_mut().operands.remove(last_pos);
     }
 }
 
@@ -269,19 +296,19 @@ mod tests {
         assert_eq!(
             MathTree::reverse_polish_notation(lexer.clone()),
             vec![
-                MathToken::Constant(dec!(2)),
-                MathToken::Variable("x".to_string()),
-                MathToken::Op(OperationToken::Multiply),
+                MathToken::constant(dec!(2)),
+                MathToken::variable("x".to_string()),
+                MathToken::operator(OperationToken::Multiply),
             ]
         );
 
         assert_eq!(
             MathTree::parse(txt).root,
             TreeNodeRef::new_vals(
-                MathToken::Op(OperationToken::Multiply),
+                MathToken::operator(OperationToken::Multiply),
                 vec![
-                    TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
-                    TreeNodeRef::new_val(MathToken::Variable("x".to_string()))
+                    TreeNodeRef::new_val(MathToken::constant(dec!(2))),
+                    TreeNodeRef::new_val(MathToken::variable("x".to_string()))
                 ]
             )
         );
@@ -295,27 +322,27 @@ mod tests {
         assert_eq!(
             MathTree::reverse_polish_notation(lexer.clone()),
             vec![
-                MathToken::Constant(dec!(2)),
-                MathToken::Variable("x".to_string()),
-                MathToken::Op(OperationToken::Multiply),
-                MathToken::Constant(dec!(1)),
-                MathToken::Op(OperationToken::Add),
+                MathToken::constant(dec!(2)),
+                MathToken::variable("x".to_string()),
+                MathToken::operator(OperationToken::Multiply),
+                MathToken::constant(dec!(1)),
+                MathToken::operator(OperationToken::Add),
             ]
         );
 
         assert_eq!(
             MathTree::parse(txt).root,
             TreeNodeRef::new_vals(
-                MathToken::Op(OperationToken::Add),
+                MathToken::operator(OperationToken::Add),
                 vec![
                     TreeNodeRef::new_vals(
-                        MathToken::Op(OperationToken::Multiply),
+                        MathToken::operator(OperationToken::Multiply),
                         vec![
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
-                            TreeNodeRef::new_val(MathToken::Variable("x".to_string()))
+                            TreeNodeRef::new_val(MathToken::constant(dec!(2))),
+                            TreeNodeRef::new_val(MathToken::variable("x".to_string()))
                         ]
                     ),
-                    TreeNodeRef::new_val(MathToken::Constant(dec!(1))),
+                    TreeNodeRef::new_val(MathToken::constant(dec!(1))),
                 ]
             )
         );
@@ -326,15 +353,15 @@ mod tests {
         assert_eq!(
             MathTree::reverse_polish_notation(Lexer::new("2 * x + 1 * 3 + 4")),
             vec![
-                MathToken::Constant(dec!(2)),
-                MathToken::Variable("x".to_string()),
-                MathToken::Op(OperationToken::Multiply),
-                MathToken::Constant(dec!(1)),
-                MathToken::Constant(dec!(3)),
-                MathToken::Op(OperationToken::Multiply),
-                MathToken::Op(OperationToken::Add),
-                MathToken::Constant(dec!(4)),
-                MathToken::Op(OperationToken::Add),
+                MathToken::constant(dec!(2)),
+                MathToken::variable("x".to_string()),
+                MathToken::operator(OperationToken::Multiply),
+                MathToken::constant(dec!(1)),
+                MathToken::constant(dec!(3)),
+                MathToken::operator(OperationToken::Multiply),
+                MathToken::operator(OperationToken::Add),
+                MathToken::constant(dec!(4)),
+                MathToken::operator(OperationToken::Add),
             ]
         );
     }
@@ -344,11 +371,11 @@ mod tests {
         assert_eq!(
             MathTree::reverse_polish_notation(Lexer::new("2 * (x + 1)")),
             vec![
-                MathToken::Constant(dec!(2)),
-                MathToken::Variable("x".to_string()),
-                MathToken::Constant(dec!(1)),
-                MathToken::Op(OperationToken::Add),
-                MathToken::Op(OperationToken::Multiply),
+                MathToken::constant(dec!(2)),
+                MathToken::variable("x".to_string()),
+                MathToken::constant(dec!(1)),
+                MathToken::operator(OperationToken::Add),
+                MathToken::operator(OperationToken::Multiply),
             ]
         );
     }
@@ -361,28 +388,28 @@ mod tests {
         assert_eq!(
             MathTree::reverse_polish_notation(lexer.clone()),
             vec![
-                MathToken::Constant(dec!(2)),
-                MathToken::Constant(dec!(4)),
-                MathToken::Variable("x".to_string()),
-                MathToken::Constant(dec!(1)),
-                MathToken::Op(OperationToken::Add),
-                MathToken::Op(OperationToken::Add),
-                MathToken::Op(OperationToken::Multiply),
+                MathToken::constant(dec!(2)),
+                MathToken::constant(dec!(4)),
+                MathToken::variable("x".to_string()),
+                MathToken::constant(dec!(1)),
+                MathToken::operator(OperationToken::Add),
+                MathToken::operator(OperationToken::Add),
+                MathToken::operator(OperationToken::Multiply),
             ]
         );
 
         assert_eq!(
             MathTree::parse(txt).root,
             TreeNodeRef::new_vals(
-                MathToken::Op(OperationToken::Multiply),
+                MathToken::operator(OperationToken::Multiply),
                 vec![
-                    TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
+                    TreeNodeRef::new_val(MathToken::constant(dec!(2))),
                     TreeNodeRef::new_vals(
-                        MathToken::Op(OperationToken::Add),
+                        MathToken::operator(OperationToken::Add),
                         vec![
-                            TreeNodeRef::new_val(MathToken::Variable("x".to_string())),
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(4))),
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(1))),
+                            TreeNodeRef::new_val(MathToken::variable("x".to_string())),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(4))),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(1))),
                         ]
                     )
                 ],
@@ -395,31 +422,31 @@ mod tests {
         assert_eq!(
             MathTree::reverse_polish_notation(lexer.clone()),
             vec![
-                MathToken::Constant(dec!(2)),
-                MathToken::Variable("x".to_string()),
-                MathToken::Constant(dec!(1)),
-                MathToken::Op(OperationToken::Add),
-                MathToken::Constant(dec!(2)),
-                MathToken::Constant(dec!(3)),
-                MathToken::Op(OperationToken::Add),
-                MathToken::Op(OperationToken::Add),
-                MathToken::Op(OperationToken::Multiply),
+                MathToken::constant(dec!(2)),
+                MathToken::variable("x".to_string()),
+                MathToken::constant(dec!(1)),
+                MathToken::operator(OperationToken::Add),
+                MathToken::constant(dec!(2)),
+                MathToken::constant(dec!(3)),
+                MathToken::operator(OperationToken::Add),
+                MathToken::operator(OperationToken::Add),
+                MathToken::operator(OperationToken::Multiply),
             ]
         );
 
         assert_eq!(
             MathTree::parse(txt).root,
             TreeNodeRef::new_vals(
-                MathToken::Op(OperationToken::Multiply),
+                MathToken::operator(OperationToken::Multiply),
                 vec![
-                    TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
+                    TreeNodeRef::new_val(MathToken::constant(dec!(2))),
                     TreeNodeRef::new_vals(
-                        MathToken::Op(OperationToken::Add),
+                        MathToken::operator(OperationToken::Add),
                         vec![
-                            TreeNodeRef::new_val(MathToken::Variable("x".to_string())),
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(1))),
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(3))),
+                            TreeNodeRef::new_val(MathToken::variable("x".to_string())),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(1))),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(2))),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(3))),
                         ]
                     )
                 ],
@@ -434,16 +461,16 @@ mod tests {
         assert_eq!(
             MathTree::parse(lexer).root,
             TreeNodeRef::new_vals(
-                MathToken::Op(OperationToken::Add),
+                MathToken::operator(OperationToken::Add),
                 vec![
-                    TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
-                    TreeNodeRef::new_val(MathToken::Constant(dec!(3))),
+                    TreeNodeRef::new_val(MathToken::constant(dec!(2))),
+                    TreeNodeRef::new_val(MathToken::constant(dec!(3))),
                     TreeNodeRef::new_vals(
-                        MathToken::Op(OperationToken::Multiply),
+                        MathToken::operator(OperationToken::Multiply),
                         vec![
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(4))),
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(3))),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(4))),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(2))),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(3))),
                         ]
                     )
                 ],
@@ -455,15 +482,15 @@ mod tests {
         assert_eq!(
             MathTree::parse(lexer).root,
             TreeNodeRef::new_vals(
-                MathToken::Op(OperationToken::Add),
+                MathToken::operator(OperationToken::Add),
                 vec![
                     // TreeNodeRef::new_val(MathToken::Constant(dec!(0))),
-                    TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
+                    TreeNodeRef::new_val(MathToken::constant(dec!(2))),
                     TreeNodeRef::new_vals(
-                        MathToken::Op(OperationToken::Pow),
+                        MathToken::operator(OperationToken::Pow),
                         vec![
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
-                            TreeNodeRef::new_val(MathToken::Constant(dec!(2))),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(2))),
+                            TreeNodeRef::new_val(MathToken::constant(dec!(2))),
                         ]
                     )
                 ],

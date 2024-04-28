@@ -18,11 +18,11 @@ impl MathTree {
 
     fn simplify_node(node: &mut TreeNodeRef, steps: &mut Steps) {
         // let node = &mut self.root;
-        let MathToken::Op(_) = node.val() else {
+        if !node.val().is_operator() {
             return;
-        };
+        }
 
-        let mut borrow = node.0.borrow_mut();
+        let mut borrow = node.borrow_mut();
 
         let operators = borrow.operands.remove_operators();
         // let mut multipliers = Vec::new();
@@ -40,7 +40,7 @@ impl MathTree {
         // Self::find_common_multiplier(multipliers);
         Self::perform_op(node, steps);
 
-        if node.0.borrow().operands.len() > operands_len {
+        if node.borrow().operands.len() > operands_len {
             Self::perform_op(node, steps);
         }
 
@@ -83,23 +83,23 @@ mod tests {
     fn simplify_x() {
         simplify_test(
             "1*x",
-            TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+            TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
         );
 
         simplify_test("0*x", TreeNodeRef::constant(dec!(0)));
 
         simplify_test(
             "0 + x",
-            TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+            TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
         );
 
         simplify_test(
             "x + x",
             TreeNodeRef::new_vals(
-                MathToken::Op(OperationToken::Multiply),
+                MathToken::operator(OperationToken::Multiply),
                 vec![
                     TreeNodeRef::constant(dec!(2)),
-                    TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+                    TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
                 ],
             ),
         );
@@ -120,29 +120,29 @@ mod tests {
     fn zero_and_double_add_subs() {
         simplify_test(
             "+x",
-            TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+            TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
         );
 
         simplify_test(
             "-x",
             TreeNodeRef::new_vals(
-                MathToken::Op(OperationToken::Multiply),
+                MathToken::operator(OperationToken::Multiply),
                 vec![
 
                     TreeNodeRef::constant(dec!(-1)),
-                    TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+                    TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
                 ],
             ),
         );
 
         simplify_test(
             "+(+x)",
-            TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+            TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
         );
 
         simplify_test(
             "-(-x)",
-            TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+            TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
         );
 
         simplify_test("-(-2)", TreeNodeRef::constant(dec!(2)));

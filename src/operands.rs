@@ -8,10 +8,14 @@ use std::{
 };
 
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
-use crate::{math_tree::TreeNodeRef, MathToken};
+use crate::{math_tree::TreeNodeRef, MathToken, MathTokenType};
 
-#[derive(Clone, Debug, PartialEq)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Operands {
     variables: Vec<TreeNodeRef>,
     // represent where each section of the vector starts
@@ -25,12 +29,14 @@ type OperandIt<'a> = Map<
     Enumerate<Iter<'a, TreeNodeRef>>,
     fn((usize, &'a TreeNodeRef)) -> (OperandPos, &TreeNodeRef),
 >;
+pub type OperandsIt<'a> = Chain<Chain<OperandIt<'a>, OperandIt<'a>>, OperandIt<'a>>;
+
 // impl std::fmt::Debug for Operands {
 //     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 //         self.childs.fmt(f)
 //     }
 // }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OperandPos {
     Constants(usize),
     Operators(usize),
@@ -60,20 +66,20 @@ impl Operands {
     }
 
     pub fn add(&mut self, node: TreeNodeRef) {
-        match node.val() {
-            MathToken::Constant(_) => {
+        match node.val().kind {
+            MathTokenType::Constant => {
                 self.constants.push(node);
             }
-            MathToken::Variable(_) => {
+            MathTokenType::Variable => {
                 self.variables.push(node);
             }
-            MathToken::Op(_) => {
+            MathTokenType::Operator => {
                 self.operators.push(node);
             }
         }
     }
 
-        pub fn extend(&mut self, other: &Self) {
+    pub fn extend(&mut self, other: &Self) {
         for (_, node) in other.iter() {
             self.add(node.clone());
         }
@@ -116,13 +122,13 @@ impl Operands {
     // }
     // }
 
-    pub fn iter(&self) -> Chain<Chain<OperandIt, OperandIt>, OperandIt> {
+    pub fn iter(&self) -> OperandsIt {
         self.operators()
             .chain(self.variables())
             .chain(self.constants())
     }
 
-    pub fn iter_mul(&self) -> Chain<Chain<OperandIt, OperandIt>, OperandIt> {
+    pub fn iter_mul(&self) -> OperandsIt {
         self.constants()
             .chain(self.variables())
             .chain(self.operators())
@@ -174,11 +180,11 @@ impl Operands {
         self.operators
             .drain(..)
             .map(|n| {
-                if let MathToken::Op(_) = n.val() {
-                    n
-                } else {
-                    unreachable!()
-                }
+                // if let MathToken::Op(_) = n.val() {
+                n
+                // } else {
+                //     unreachable!()
+                // }
             })
             .collect_vec()
     }

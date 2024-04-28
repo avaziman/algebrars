@@ -4,14 +4,28 @@ version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib"]
 
 [dependencies]
 bimap = "0.6.3"
 itertools = "0.12.1"
 lazy_static = "1.4.0"
 pretty_assertions = "1.4.0"
-rust_decimal = {version = "1.35.0", features = ["maths"]}
+rust_decimal = { version = "1.34.2", features = [
+    "maths",
+    "serde",
+    "serde-with-str",
+], git = "https://github.com/ChristianIvicevic/rust-decimal", branch = "wasm"}
 rust_decimal_macros = "1.34.2"
+serde = { version = "1.0.199", features = ["derive", "std", "rc"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+serde-wasm-bindgen = "0.6.5"
+wasm-bindgen = "0.2.92"
+
+# [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+# wasm-bindgen-test = "0.3.42"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

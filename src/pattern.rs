@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     math_tree::{MathTree, TreeNodeRef},
-    MathToken,
+    MathToken, MathTokenType,
 };
 
 impl MathTree {
@@ -24,37 +24,38 @@ impl MathTree {
         pattern_node: &TreeNodeRef,
         variables: &mut HashMap<String, TreeNodeRef>,
     ) -> bool {
-        match pattern_node.val() {
-            // constants must match exactly
-            MathToken::Constant(_) => check_node == pattern_node,
-            MathToken::Op(op) => {
-                if let MathToken::Op(op2) = check_node.val() {
-                    let b1 = check_node.0.borrow();
-                    let b2= pattern_node.0.borrow();
-                    let iter1 = b1.operands.iter();
-                    let iter2 = b2.operands.iter();
-                    // operation type must match
-                    op == op2 &&
-                    // operands length must match
-                    b1.operands.len() == b2.operands.len() &&
-                    // all the childs must match the rest of the pattern
-                    iter1.zip(iter2).all(|((_, a), (_, b))| 
-                        Self::node_like(a, b, variables))
-                } else {
-                    false
-                }
-            }
-            MathToken::Variable(v) => {
-                // pattern expects a variable
+        todo!()
+        // match pattern_node.val().kind {
+        //     // constants must match exactly
+        //     MathTokenType::Constant => check_node == pattern_node,
+        //     MathToken::Op(op) => {
+        //         if let MathToken::Op(op2) = check_node.val() {
+        //             let b1 = check_node.borrow();
+        //             let b2= pattern_node.borrow();
+        //             let iter1 = b1.operands.iter();
+        //             let iter2 = b2.operands.iter();
+        //             // operation type must match
+        //             op == op2 &&
+        //             // operands length must match
+        //             b1.operands.len() == b2.operands.len() &&
+        //             // all the childs must match the rest of the pattern
+        //             iter1.zip(iter2).all(|((_, a), (_, b))| 
+        //                 Self::node_like(a, b, variables))
+        //         } else {
+        //             false
+        //         }
+        //     }
+        //     MathToken::Variable(v) => {
+        //         // pattern expects a variable
 
-                match variables.get(&v) {
-                    // if we saw that variable before, we expect it to be identical
-                    Some(x) =>  x == check_node,
-                    // if we haven't seen this variable before then it should be equal to this from now on
-                    None => {variables.insert(v, check_node.clone()); true},
-                }
-            },
-        }
+        //         match variables.get(&v) {
+        //             // if we saw that variable before, we expect it to be identical
+        //             Some(x) =>  x == check_node,
+        //             // if we haven't seen this variable before then it should be equal to this from now on
+        //             None => {variables.insert(v, check_node.clone()); true},
+        //         }
+        //     },
+        // }
     }
 }
 
@@ -76,7 +77,7 @@ mod tests {
         ])));
 
         assert_eq!(MathTree::like(&MathTree::parse("(x + 2)^2").root, "(a + b)^2"), Some(HashMap::from([
-            ("a".to_string(), TreeNodeRef::new_val(MathToken::Variable(String::from("x")))),
+            ("a".to_string(), TreeNodeRef::new_val(MathToken::variable(String::from("x")))),
             ("b".to_string(), TreeNodeRef::constant(dec!(2))),
         ])));
 

@@ -13,13 +13,13 @@ pub struct Lexer {
 lazy_static::lazy_static! {
     /// This is an example for using doc comment attributes
     pub static ref OPERATOR_MAP: BiMap<char, MathToken> = bimap::BiMap::from_iter(vec![
-        ('+' , MathToken::Op(OperationToken::Add)),
-        ('-' , MathToken::Op(OperationToken::Subtract)),
-        ('/' , MathToken::Op(OperationToken::Divide)),
-        ('*' , MathToken::Op(OperationToken::Multiply)),
-        ('^' , MathToken::Op(OperationToken::Pow)),
-        ('(' , MathToken::Op(OperationToken::LParent)),
-        (')' , MathToken::Op(OperationToken::RParent)),
+        ('+' , MathToken::operator(OperationToken::Add)),
+        ('-' , MathToken::operator(OperationToken::Subtract)),
+        ('/' , MathToken::operator(OperationToken::Divide)),
+        ('*' , MathToken::operator(OperationToken::Multiply)),
+        ('^' , MathToken::operator(OperationToken::Pow)),
+        ('(' , MathToken::operator(OperationToken::LParent)),
+        (')' , MathToken::operator(OperationToken::RParent)),
     ]);
 }
 
@@ -38,14 +38,14 @@ impl Lexer {
                     {
                         str_stop += 1;
                     }
-                    MathToken::Constant(Decimal::from_str(&str[i..str_stop]).unwrap())
+                    MathToken::constant(Decimal::from_str(&str[i..str_stop]).unwrap())
                 }
                 c if c.is_alphabetic() => {
                     let mut str_stop = i + 1;
                     while chars.next_if(|(_, c)| c.is_alphanumeric()).is_some() {
                         str_stop += 1;
                     }
-                    MathToken::Variable(str[i..str_stop].to_string())
+                    MathToken::variable(str[i..str_stop].to_string())
                 }
                 _ => match OPERATOR_MAP.get_by_left(&c) {
                     Some(s) => s.clone(),
@@ -71,9 +71,9 @@ mod tests {
         assert_eq!(
             Lexer::new("2 * x").tokens,
             vec![
-                MathToken::Constant(dec!(2)),
-                MathToken::Op(OperationToken::Multiply),
-                MathToken::Variable("x".to_string())
+                MathToken::constant(dec!(2)),
+                MathToken::operator(OperationToken::Multiply),
+                MathToken::variable("x".to_string())
             ]
         );
     }
@@ -83,13 +83,13 @@ mod tests {
         assert_eq!(
             Lexer::new("2 * (x + 1)").tokens,
             vec![
-                MathToken::Constant(dec!(2)),
-                MathToken::Op(OperationToken::Multiply),
-                MathToken::Op(OperationToken::LParent),
-                MathToken::Variable("x".to_string()),
-                MathToken::Op(OperationToken::Add),
-                MathToken::Constant(dec!(1)),
-                MathToken::Op(OperationToken::RParent),
+                MathToken::constant(dec!(2)),
+                MathToken::operator(OperationToken::Multiply),
+                MathToken::operator(OperationToken::LParent),
+                MathToken::variable("x".to_string()),
+                MathToken::operator(OperationToken::Add),
+                MathToken::constant(dec!(1)),
+                MathToken::operator(OperationToken::RParent),
             ]
         );
         

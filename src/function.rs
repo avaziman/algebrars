@@ -1,10 +1,15 @@
-
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 use crate::{
-    math_tree::{MathTree, TreeNodeRef, TreePos}, operands::OperandPos, stepper::Steps
+    math_tree::{MathTree, TreeNodeRef, TreePos},
+    operands::OperandPos,
+    stepper::Steps,
 };
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Function {
     expression: MathTree,
     variable: Option<Vec<(TreeNodeRef, OperandPos)>>,
@@ -34,7 +39,7 @@ impl Function {
     }
 
     pub fn scan_variables_node(node: &TreeNodeRef, variables: &mut Vec<(TreeNodeRef, OperandPos)>) {
-        let borrow = node.0.borrow();
+        let borrow = node.borrow();
 
         for (_, opr) in borrow.operands.iter() {
             Self::scan_variables_node(opr, variables);
@@ -55,7 +60,7 @@ impl Function {
         };
 
         for (parent, pos) in variables {
-            parent.0.borrow_mut().operands.remove(pos.clone());
+            parent.borrow_mut().operands.remove(pos.clone());
             parent.add_operand(val.clone());
         }
 
@@ -66,6 +71,11 @@ impl Function {
     }
 }
 
+// #[cfg(target_arch = "wasm32")]
+// #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+// pub fn export_function(expr: &str) -> JsValue {
+//     serde_wasm_bindgen::to_value(&Function::from(MathTree::parse(expr))).unwrap()
+// }
 #[cfg(test)]
 mod tests {
     use rust_decimal_macros::dec;
