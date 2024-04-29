@@ -14,16 +14,18 @@ impl MathTree {
         let constants = multipliers
             .iter()
             .map(|n| {
+                let borrow = n.borrow();
                 let mut constants =
-                    n.borrow()
+                    borrow
                         .operands
                         .constants()
-                        .map(|(_, n)| {
+                        .map(|pos | {
                             // let MathToken::Constant(c) = n.val() else {
                             //     unreachable!()
                             // };
                             // c
-                            n.val().constant.unwrap()
+                            borrow.operands[pos].val().constant.unwrap()
+                            // n.val().constant.unwrap()
                         })
                         .collect_vec();
                 debug_assert!(constants.len() <= 1);
@@ -36,14 +38,15 @@ impl MathTree {
         let variables = multipliers
             .iter()
             .map(|n| {
-                n.borrow()
+                let borrow = n.borrow();
+                borrow
                     .operands
                     .variables()
-                    .map(|(_, n)| {
+                    .map(|pos| {
                         // let MathToken::Variable(v) = n.val() else {
                         //     unreachable!()
                         // };
-                        n.val().variable.unwrap()
+                        borrow.operands[pos].val().variable.unwrap()
                     })
                     .collect_vec()
             })

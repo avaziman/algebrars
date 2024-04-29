@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     lexer::Lexer,
-    operands::{OperandPos, Operands},
+    operands::{OperandPos, Operands, OperandsIt},
     MathToken, MathTokenType, OperationToken,
 };
 
@@ -76,6 +76,10 @@ impl TreeNodeRef {
 }
 
 impl TreeNodeRef {
+    pub fn replace(&self, new: TreeNodeRef) {
+        self.0.replace(new.borrow().clone());
+    }
+
     pub fn borrow(&self) -> std::cell::Ref<'_, TreeNode> {
         self.0.borrow()
     }
@@ -96,7 +100,7 @@ impl TreeNode {
         }
         Self {
             val: token,
-            operands: Operands::new(orderless),
+            operands: Operands::default(),
         }
     }
 
@@ -124,7 +128,7 @@ impl TreeNode {
         }
 
         // not mergeable, add regular operand
-        self.operands.add(operand);
+        self.operands.push(operand);
     }
 
     // #[wasm_bindgen(getter)]
@@ -134,12 +138,16 @@ impl TreeNode {
 }
 
 impl TreeNode {
-    pub fn operand_iter(&self) -> impl Iterator<Item = (OperandPos, &TreeNodeRef)> {
-        if self.val == MathToken::operator(OperationToken::Multiply) {
+    pub fn operand_iter<'a>(
+        &'a self,
+    ) -> std::iter::Map<OperandsIt, impl FnMut(OperandPos) -> (OperandPos, &'a TreeNodeRef)> {
+        let iter = if self.val == MathToken::operator(OperationToken::Multiply) {
             self.operands.iter_mul()
         } else {
             self.operands.iter()
-        }
+        };
+
+        iter.map(|pos| (pos, &self.operands[pos]))
     }
 }
 
@@ -254,17 +262,17 @@ impl MathTree {
     }
 
     // O(n) where n is the amount of leafs between the root and the desired remove
-    pub fn remove(&mut self, mut pos: TreePos) {
-        let mut node = self.root.clone();
-        let last_pos = pos.0.pop().expect("empty pos");
+    // pub fn remove(&mut self, mut pos: TreePos) {
+    //     let mut node = self.root.clone();
+    //     let last_pos = pos.0.pop().expect("empty pos");
 
-        for p in pos.0 {
-            let val = node.borrow().operands[p].clone();
-            node = val;
-        }
+    //     for p in pos.0 {
+    //         let val = node.borrow().operands[p].clone();
+    //         node = val;
+    //     }
 
-        node.borrow_mut().operands.remove(last_pos);
-    }
+    //     node.borrow_mut().operands.remove(last_pos);
+    // }
 
     pub fn copy(node: &TreeNodeRef) -> TreeNodeRef {
         // let res = TreeNodeRef::new_vals(node.val(), childs)
@@ -403,8 +411,8 @@ mod tests {
                     TreeNodeRef::new_vals(
                         MathToken::operator(OperationToken::Add),
                         vec![
-                            TreeNodeRef::new_val(MathToken::variable("x".to_string())),
                             TreeNodeRef::new_val(MathToken::constant(dec!(4))),
+                            TreeNodeRef::new_val(MathToken::variable("x".to_string())),
                             TreeNodeRef::new_val(MathToken::constant(dec!(1))),
                         ]
                     )

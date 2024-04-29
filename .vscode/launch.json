@@ -7,23 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'algebrars'",
+            "name": "Cargo test",
             "cargo": {
                 "args": [
                     "test",
-                    // "--test",
-                    // "simplify::simplify_x",
                     "--no-run",
-                    "--lib",
-                    "--package=algebrars",
-                ],
-                "filter": {
-                    "name": "algebrars",
-                    "kind": "lib"
-                }
+                    "--lib"
+                ]
             },
-            "args": [],
-            "cwd": "${workspaceFolder}"
+            "args": []
         }
     ]
 }

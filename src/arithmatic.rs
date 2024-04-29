@@ -55,7 +55,7 @@ pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef, orderless: bool) -> Opt
 }
 
 impl MathTree {
-    pub fn perform_op(node: &mut TreeNodeRef, steps: &mut Steps) {
+    pub fn perform_op(node: &mut TreeNodeRef, steps: &mut Steps) -> Option<TreeNodeRef> {
         let Some(op) = node.val().operation else {
             panic!("Not operation")
         };
@@ -68,15 +68,16 @@ impl MathTree {
 
         let do_op = Self::get_op(&op);
         let mut remaining = Vec::new();
+        let orderless = op.info().orderless;
         loop {
             if borrow.operands.len() < 2 {
                 break;
             }
 
-            let a = borrow.operands.pop_front().unwrap();
-            let b = borrow.operands.pop_front().unwrap();
+            let a = borrow.operands.pop_front(orderless).unwrap();
+            let b = borrow.operands.pop_front(orderless).unwrap();
 
-            let desc = get_description(&a, &b, op.info().orderless);
+            let desc = get_description(&a, &b, orderless);
             let step = Step::PerformOp(desc.clone());
             if let Some(res) = do_op(&a, &b, desc) {
                 steps.step((&a, &b), &res, step);
@@ -90,14 +91,19 @@ impl MathTree {
         }
 
         for r in remaining {
-            borrow.operands.add(r);
+            borrow.operands.push(r);
         }
 
         if borrow.operands.len() == 1 {
-            let val = borrow.operands.pop_front().unwrap();
+            let val = borrow.operands.pop_front(true).unwrap();
             std::mem::drop(borrow);
-
-            *node = val;
+            // replacing can only be done through operands as it may change token type
+            // operation is complete, this is the single result
+            Some(val)
+            // node.replace(val);
+        } else {
+            // there are still operands left
+            None
         }
     }
     // Self::perform_op(&mut op);
@@ -115,7 +121,7 @@ impl MathTree {
                     // x + x = 2x
                     Some(OpDescription::EqualOperand) => Some(TreeNodeRef::new_vals(
                         MathToken::operator(OperationToken::Multiply),
-                        vec![TreeNodeRef::two(), a.clone()],
+                        vec![a.clone(), TreeNodeRef::two()],
                     )),
                     // x + 0 = x
                     Some(OpDescription::ByZero(x)) => Some(x),
@@ -224,6 +230,9 @@ impl TreeNodeRef {
     }
 
     pub fn subtract(self, node: TreeNodeRef) -> TreeNodeRef {
-        TreeNodeRef::new_vals(MathToken::operator(OperationToken::Subtract), vec![self, node])
+        TreeNodeRef::new_vals(
+            MathToken::operator(OperationToken::Subtract),
+            vec![self, node],
+        )
     }
 }

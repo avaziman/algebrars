@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    math_tree::{MathTree, TreeNodeRef},
+    math_tree::{MathTree, TreeNodeRef}, MathTokenType,
 };
 
 impl MathTree {
@@ -19,42 +19,43 @@ impl MathTree {
     }
 
     fn node_like(
-        _check_node: &TreeNodeRef,
-        _pattern_node: &TreeNodeRef,
-        _variables: &mut HashMap<String, TreeNodeRef>,
+        check_node: &TreeNodeRef,
+        pattern_node: &TreeNodeRef,
+        variables: &mut HashMap<String, TreeNodeRef>,
     ) -> bool {
-        todo!()
-        // match pattern_node.val().kind {
-        //     // constants must match exactly
-        //     MathTokenType::Constant => check_node == pattern_node,
-        //     MathToken::Op(op) => {
-        //         if let MathToken::Op(op2) = check_node.val() {
-        //             let b1 = check_node.borrow();
-        //             let b2= pattern_node.borrow();
-        //             let iter1 = b1.operands.iter();
-        //             let iter2 = b2.operands.iter();
-        //             // operation type must match
-        //             op == op2 &&
-        //             // operands length must match
-        //             b1.operands.len() == b2.operands.len() &&
-        //             // all the childs must match the rest of the pattern
-        //             iter1.zip(iter2).all(|((_, a), (_, b))| 
-        //                 Self::node_like(a, b, variables))
-        //         } else {
-        //             false
-        //         }
-        //     }
-        //     MathToken::Variable(v) => {
-        //         // pattern expects a variable
-
-        //         match variables.get(&v) {
-        //             // if we saw that variable before, we expect it to be identical
-        //             Some(x) =>  x == check_node,
-        //             // if we haven't seen this variable before then it should be equal to this from now on
-        //             None => {variables.insert(v, check_node.clone()); true},
-        //         }
-        //     },
-        // }
+        let val = pattern_node.val();
+        match val.kind {
+            // constants must match exactly
+            MathTokenType::Constant => check_node == pattern_node,
+            MathTokenType::Operator => {
+                let op = val.operation.unwrap();
+                if let Some(op2) = check_node.val().operation {
+                    let b1 = check_node.borrow();
+                    let b2= pattern_node.borrow();
+                    let iter1 = b1.operands.iter();
+                    let iter2 = b2.operands.iter();
+                    // operation type must match
+                    op == op2 &&
+                    // operands length must match
+                    b1.operands.len() == b2.operands.len() &&
+                    // all the childs must match the rest of the pattern
+                    iter1.zip(iter2).all(|(a, b)| 
+                        Self::node_like(&b1.operands[a], &b2.operands[b], variables))
+                } else {
+                    false
+                }
+            }
+            MathTokenType::Variable => {
+                // pattern expects a variable
+                let v = val.variable.unwrap();
+                match variables.get(&v) {
+                    // if we saw that variable before, we expect it to be identical
+                    Some(x) =>  x == check_node,
+                    // if we haven't seen this variable before then it should be equal to this from now on
+                    None => {variables.insert(v, check_node.clone()); true},
+                }
+            },
+        }
     }
 }
 
