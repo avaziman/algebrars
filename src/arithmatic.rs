@@ -54,8 +54,17 @@ pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef, orderless: bool) -> Opt
     None
 }
 
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen::prelude::wasm_bindgen)]
+#[derive(Debug, PartialEq)]
+pub enum OperationError {
+    Overflow,
+}
+
 impl MathTree {
-    pub fn perform_op(node: &mut TreeNodeRef, steps: &mut Steps) -> Option<TreeNodeRef> {
+    pub fn perform_op(
+        node: &mut TreeNodeRef,
+        steps: &mut Steps,
+    ) -> Result<Option<TreeNodeRef>, OperationError> {
         let Some(op) = node.val().operation else {
             panic!("Not operation")
         };
@@ -79,14 +88,14 @@ impl MathTree {
 
             let desc = get_description(&a, &b, orderless);
             let step = Step::PerformOp(desc.clone());
-            if let Some(res) = do_op(&a, &b, desc) {
+            if let Some(res) = do_op(&a, &b, desc)? {
                 steps.step((&a, &b), &res, step);
                 // a = res.clone();
                 // operands.add(res);
                 borrow.add_operand(res);
             } else {
-                remaining.push(a);
                 remaining.push(b);
+                remaining.push(a);
             }
         }
 
@@ -94,7 +103,7 @@ impl MathTree {
             borrow.operands.push(r);
         }
 
-        if borrow.operands.len() == 1 {
+        Ok(if borrow.operands.len() == 1 {
             let val = borrow.operands.pop_front(true).unwrap();
             std::mem::drop(borrow);
             // replacing can only be done through operands as it may change token type
@@ -104,117 +113,134 @@ impl MathTree {
         } else {
             // there are still operands left
             None
-        }
+        })
     }
     // Self::perform_op(&mut op);
 
     fn get_op(
         op: &OperationToken,
-    ) -> fn(&TreeNodeRef, &TreeNodeRef, Option<OpDescription>) -> Option<TreeNodeRef> {
+    ) -> fn(
+        &TreeNodeRef,
+        &TreeNodeRef,
+        Option<OpDescription>,
+    ) -> Result<Option<TreeNodeRef>, OperationError> {
         // let desc = get_description(a, b);
         match op {
             OperationToken::Add => {
-                |a: &TreeNodeRef, _b, desc| match desc {
-                    Some(OpDescription::BothConstants(c1, c2)) => {
-                        Some(TreeNodeRef::constant(c1 + c2))
-                    }
-                    // x + x = 2x
-                    Some(OpDescription::EqualOperand) => Some(TreeNodeRef::new_vals(
-                        MathToken::operator(OperationToken::Multiply),
-                        vec![a.clone(), TreeNodeRef::two()],
-                    )),
-                    // x + 0 = x
-                    Some(OpDescription::ByZero(x)) => Some(x),
-                    // x + 1 = x + 1
-                    // Some(OpDescription::ByOne)
-                    _ => None,
+                |a: &TreeNodeRef, _b, desc| {
+                    Ok(match desc {
+                        Some(OpDescription::BothConstants(c1, c2)) => {
+                            Some(TreeNodeRef::constant(c1 + c2))
+                        }
+                        // x + x = 2x
+                        Some(OpDescription::EqualOperand) => Some(TreeNodeRef::new_vals(
+                            MathToken::operator(OperationToken::Multiply),
+                            vec![a.clone(), TreeNodeRef::two()],
+                        )),
+                        // x + 0 = x
+                        Some(OpDescription::ByZero(x)) => Some(x),
+                        // x + 1 = x + 1
+                        // Some(OpDescription::ByOne)
+                        _ => None,
+                    })
                 }
             }
             OperationToken::Subtract => {
-                |a: &TreeNodeRef, b, desc| match desc {
-                    Some(OpDescription::BothConstants(c1, c2)) => {
-                        Some(TreeNodeRef::constant(c1 - c2))
-                    }
-                    // x - x = 0
-                    Some(OpDescription::EqualOperand) => Some(TreeNodeRef::zero()),
-                    // x - 0 = x
-                    Some(OpDescription::ByZero(x)) => Some(x),
-                    // x - 1 = x - 1
-                    // Some(OpDescription::ByOne)
-                    _ => {
-                        // -(-x) = x
-                        // 0-x = -x = -1 * x
-                        if MathToken::constant(Decimal::ZERO) == a.val() {
-                            return Some(TreeNodeRef::new_vals(
-                                MathToken::operator(OperationToken::Multiply),
-                                vec![TreeNodeRef::constant(dec!(-1)), b.clone()],
-                            ));
+                |a: &TreeNodeRef, b, desc| {
+                    Ok(match desc {
+                        Some(OpDescription::BothConstants(c1, c2)) => {
+                            Some(TreeNodeRef::constant(c1 - c2))
                         }
-                        None
-                    }
+                        // x - x = 0
+                        Some(OpDescription::EqualOperand) => Some(TreeNodeRef::zero()),
+                        // x - 0 = x
+                        Some(OpDescription::ByZero(x)) => Some(x),
+                        // x - 1 = x - 1
+                        // Some(OpDescription::ByOne)
+                        _ => {
+                            // -(-x) = x
+                            // 0-x = -x = -1 * x
+                            if MathToken::constant(Decimal::ZERO) == a.val() {
+                                return Ok(Some(TreeNodeRef::new_vals(
+                                    MathToken::operator(OperationToken::Multiply),
+                                    vec![TreeNodeRef::constant(dec!(-1)), b.clone()],
+                                )));
+                            }
+                            None
+                        }
+                    })
                 }
             }
             OperationToken::Multiply => {
-                |a: &TreeNodeRef, _b: &TreeNodeRef, desc| match desc {
-                    Some(OpDescription::BothConstants(c1, c2)) => {
-                        Some(TreeNodeRef::constant(c1 * c2))
-                    }
-                    // x * x = x^2
-                    Some(OpDescription::EqualOperand) => Some(TreeNodeRef::new_vals(
-                        MathToken::operator(OperationToken::Pow),
-                        vec![a.clone(), TreeNodeRef::two()],
-                    )),
-                    // x * 0 = 0
-                    Some(OpDescription::ByZero(_)) => Some(TreeNodeRef::zero()),
-                    // x * 1 = x
-                    Some(OpDescription::ByOne(x)) => Some(x),
-                    _ => {
-                        // if let Some(OperationToken::Pow) = a.val().operation {
-                        //     if let MathToken::Op(OperationToken::Pow) = b.val() {
-                        //         let b1 = a.borrow();
-                        //         let term = b1.operands.iter().next().unwrap().1;
-                        //         if term == b.borrow().operands.iter().next().unwrap().1 {
-                        //             // x^n * x^m = x^(n+m)
-                        //         }
-                        //     }
-                        // }
-                        None
-                    }
+                |a: &TreeNodeRef, _b: &TreeNodeRef, desc| {
+                    Ok(match desc {
+                        Some(OpDescription::BothConstants(c1, c2)) => {
+                            Some(TreeNodeRef::constant(c1 * c2))
+                        }
+                        // x * x = x^2
+                        Some(OpDescription::EqualOperand) => Some(TreeNodeRef::new_vals(
+                            MathToken::operator(OperationToken::Pow),
+                            vec![a.clone(), TreeNodeRef::two()],
+                        )),
+                        // x * 0 = 0
+                        Some(OpDescription::ByZero(_)) => Some(TreeNodeRef::zero()),
+                        // x * 1 = x
+                        Some(OpDescription::ByOne(x)) => Some(x),
+                        _ => {
+                            // if let Some(OperationToken::Pow) = a.val().operation {
+                            //     if let MathToken::Op(OperationToken::Pow) = b.val() {
+                            //         let b1 = a.borrow();
+                            //         let term = b1.operands.iter().next().unwrap().1;
+                            //         if term == b.borrow().operands.iter().next().unwrap().1 {
+                            //             // x^n * x^m = x^(n+m)
+                            //         }
+                            //     }
+                            // }
+                            None
+                        }
+                    })
                 }
             }
             OperationToken::Divide => {
-                |_a: &TreeNodeRef, _b, desc| match desc {
-                    Some(OpDescription::BothConstants(c1, c2)) => {
-                        Some(TreeNodeRef::constant(c1 / c2))
-                    }
-                    // x / x = 1
-                    Some(OpDescription::EqualOperand) => Some(TreeNodeRef::one()),
-                    // x / 0 = undefined
-                    Some(OpDescription::ByZero(_)) => panic!(),
-                    // x / 1 = x
-                    Some(OpDescription::ByOne(x)) => Some(x),
-                    _ => None,
+                |_a: &TreeNodeRef, _b, desc| {
+                    Ok(match desc {
+                        Some(OpDescription::BothConstants(c1, c2)) => {
+                            Some(TreeNodeRef::constant(c1 / c2))
+                        }
+                        // x / x = 1
+                        Some(OpDescription::EqualOperand) => Some(TreeNodeRef::one()),
+                        // x / 0 = undefined
+                        Some(OpDescription::ByZero(_)) => panic!(),
+                        // x / 1 = x
+                        Some(OpDescription::ByOne(x)) => Some(x),
+                        _ => None,
+                    })
                 }
             }
             OperationToken::Pow => {
-                |_a: &TreeNodeRef, _b, desc| match desc {
-                    Some(OpDescription::BothConstants(c1, c2)) => {
-                        Some(TreeNodeRef::constant(c1.powd(c2)))
-                    }
-                    // x ^ x = x ^ x
-                    // Some(OpDescription::EqualOperand)
+                |_a: &TreeNodeRef, _b, desc| {
+                    Ok(match desc {
+                        Some(OpDescription::BothConstants(c1, c2)) => {
+                            Some(TreeNodeRef::constant(match c1.checked_powd(c2) {
+                                Some(k) => k,
+                                None => return Err(OperationError::Overflow),
+                            }))
+                        }
+                        // x ^ x = x ^ x
+                        // Some(OpDescription::EqualOperand)
 
-                    // x ^ 0 = 1
-                    Some(OpDescription::ByZero(_)) => Some(TreeNodeRef::one()),
+                        // x ^ 0 = 1
+                        Some(OpDescription::ByZero(_)) => Some(TreeNodeRef::one()),
 
-                    // x ^ 1 = x
-                    Some(OpDescription::ByOne(x)) => Some(x),
-                    _ => {
-                        // (a + b)^2 = a^2 + 2ab + b^2
-                        // (a + b) * (c + d) = a(c + d) + b(c + d) = ac + ad + bc + bd
-                        // if let
-                        None
-                    }
+                        // x ^ 1 = x
+                        Some(OpDescription::ByOne(x)) => Some(x),
+                        _ => {
+                            // (a + b)^2 = a^2 + 2ab + b^2
+                            // (a + b) * (c + d) = a(c + d) + b(c + d) = ac + ad + bc + bd
+                            // if let
+                            None
+                        }
+                    })
                 }
             }
             OperationToken::FractionDivide => todo!(),

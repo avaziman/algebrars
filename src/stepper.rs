@@ -33,8 +33,7 @@ pub mod tests {
     use rust_decimal_macros::dec;
 
     use crate::{
-        math_tree::{MathTree, TreeNodeRef},
-        stepper::Steps,
+        arithmatic::OperationError, math_tree::{MathTree, TreeNodeRef}, stepper::Steps
     };
 
     use super::Step;
@@ -46,13 +45,14 @@ pub mod tests {
     //     }
     // }
 
-    fn steps_test(expr: &str, res: TreeNodeRef, steps_check: Steps) {
+    fn steps_test(expr: &str, res: TreeNodeRef, steps_check: Steps) -> Result<(), OperationError> {
         let mut simplified = MathTree::parse(expr);
         let mut steps = Steps::new();
-        simplified.simplify(&mut steps);
+        simplified.simplify(&mut steps)?;
 
         assert_eq!(simplified.root, res);
         assert_eq!(steps, steps_check);
+        Ok(())
     }
 
     #[test]

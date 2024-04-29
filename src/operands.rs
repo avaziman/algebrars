@@ -118,21 +118,7 @@ impl Operands {
         *type_pos = new_type_pos;
         *tree = with;
     }
-
-    // pub fn variables(&self) -> Vec<String> {
-    //     self.variables
-    //         .iter()
-    //         .map(|n| {
-    //             if let MathToken::Variable(d) = n.val() {
-    //                 d
-    //             } else {
-    //                 unreachable!()
-    //             }
-    //         })
-    //         .collect_vec()
-    // }
-    // }
-
+    
     pub fn iter<'a>(&'a self) -> OperandsIt {
         self.operators()
             .chain(self.variables())

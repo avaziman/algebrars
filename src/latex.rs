@@ -3,32 +3,38 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     lexer::OPERATOR_MAP,
-    math_tree::{MathTree, TreeNodeRef}, MathTokenType,
+    math_tree::{MathTree, TreeNodeRef},
+    MathTokenType,
 };
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl MathTree {
     pub fn to_latex(&self) -> String {
         let mut res = String::new();
-    
+
         Self::to_latex_node(self.root.clone(), &mut res);
         res
     }
 }
 
 impl MathTree {
-
     fn to_latex_node(node: TreeNodeRef, res: &mut String) {
         let borrow = node.borrow();
 
         let mut childs = borrow.operand_iter();
-        Self::token_to_latex(childs.next().unwrap().1, res);
+        // Self::token_to_latex(childs.next().unwrap().1, res);
+        if !node.val().is_operator() {
+            Self::token_to_latex(&node, res);
+            return;
+        };
+
+        // first child without operator
+        if let Some((_, child)) = childs.next() {
+            Self::token_to_latex(child, res);
+        }
 
         for (_, child) in childs {
             // res +=
-            if !node.val().is_operator() {
-                panic!()
-            };
             res.push(OPERATOR_MAP.get_by_right(&node.val()).unwrap().clone());
 
             Self::token_to_latex(child, res);
@@ -57,6 +63,8 @@ mod tests {
 
     #[test]
     pub fn simple_latex() {
+        assert_eq!(MathTree::parse("x").to_latex(), "x");
+
         assert_eq!(MathTree::parse("2 * x").to_latex(), "2*x");
 
         assert_eq!(MathTree::parse("2 * (x + 1)").to_latex(), "2*(x+1)");
