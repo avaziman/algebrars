@@ -76,6 +76,7 @@ mod tests {
             ("n".to_string(), TreeNodeRef::constant(dec!(4))),
         ])));
 
+        
         assert_eq!(MathTree::like(&MathTree::parse("(x + 2)^2").root, "(a + b)^2"), Some(HashMap::from([
             ("a".to_string(), TreeNodeRef::new_val(MathToken::variable(String::from("x")))),
             ("b".to_string(), TreeNodeRef::constant(dec!(2))),

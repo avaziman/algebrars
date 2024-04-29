@@ -273,12 +273,16 @@ impl MathTree {
 
     //     node.borrow_mut().operands.remove(last_pos);
     // }
-
-    pub fn copy(node: &TreeNodeRef) -> TreeNodeRef {
+    pub fn copy(&self) -> MathTree {
+        MathTree {
+            root: Self::copy_node(&self.root),
+        }
+    }
+    fn copy_node(node: &TreeNodeRef) -> TreeNodeRef {
         // let res = TreeNodeRef::new_vals(node.val(), childs)
         let mut children = Vec::new();
-        for (_i, c) in node.0.borrow().operand_iter() {
-            children.push(Self::copy(c));
+        for (_i, c) in node.0.borrow().operands().iter_order() {
+            children.push(Self::copy_node(c));
         }
 
         TreeNodeRef::new_vals(node.val(), children)

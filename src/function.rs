@@ -48,14 +48,17 @@ impl Function {
         };
 
         // let new_tree = MathTree::copy(&self.expression.root);
+        // let mut new_variables = Vec::with_capacity(variables.len());
         for (parent, pos) in variables {
             parent.borrow_mut().operands.replace_val(*pos, val.clone());
+            // new_variables.push((parent, ));
         }
+        let mut tree = self.expression.copy();
         
         let mut steps = Steps::new();
-        self.expression.simplify(&mut steps);
+        tree.simplify(&mut steps);
         
-        Some(self.expression.root.clone())
+        Some(tree.root.clone())
     }
 }
 
@@ -93,10 +96,10 @@ mod tests {
     fn evaluate() {
         let mut fx = Function::from(MathTree::parse("x^2"));
 
-        // assert_eq!(
-        //     fx.evaluate(TreeNodeRef::constant(dec!(4))),
-        //     Some(TreeNodeRef::constant(dec!(16)))
-        // );
+        assert_eq!(
+            fx.evaluate(TreeNodeRef::constant(dec!(4))),
+            Some(TreeNodeRef::constant(dec!(16)))
+        );
 
         assert_eq!(
             fx.evaluate(TreeNodeRef::constant(dec!(-4))),
@@ -104,9 +107,9 @@ mod tests {
         );
 
 
-        // assert_eq!(
-        //     fx.evaluate(TreeNodeRef::constant(dec!(1))),
-        //     Some(TreeNodeRef::constant(dec!(1)))
-        // );
+        assert_eq!(
+            fx.evaluate(TreeNodeRef::constant(dec!(1))),
+            Some(TreeNodeRef::constant(dec!(1)))
+        );
     }
 }
