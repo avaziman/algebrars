@@ -2,8 +2,10 @@ use itertools::Itertools;
 
 use crate::{
     arithmatic::OperationError,
+    constants::CONSTANTS_MAP,
     math_tree::{MathTree, TreeNodeRef},
     stepper::Steps,
+    MathTokenType,
 };
 
 // since contrary to addition, substraction is not an orderless operation,
@@ -23,7 +25,9 @@ impl MathTree {
         steps: &mut Steps,
     ) -> Result<Option<TreeNodeRef>, OperationError> {
         // let node = &mut self.root;
-        if !node.val().is_operator() {
+        let val = node.val();
+
+        if !val.is_operator() {
             return Ok(None);
         }
 
@@ -36,16 +40,17 @@ impl MathTree {
             if let Some(complete) = Self::simplify_node(&mut op, steps)? {
                 borrow.operands.replace_val(op_pos, complete);
             }
-            // if let MathToken::Op(Operation
-            // simplify_test("-(-2)", TreeNodeRef::constant(dec!(2)));
+        }
 
-            // // lex: 5 sub ( sub 2 )
-            // // pf: 52-- sub(sub(5, 2)) = sub(3) = -3 WRONG!
-            // // pf: 5-2- sub(5, sub(2)) = sub(5, -2) = 7 right => -2 needs to be parsed as a decimal not substract
-            // simplify_test("5-Token::Multiply) = op.val() {
-            //     multipliers.push(op.clone());
+        for v in borrow.operands.variables().collect_vec() {
+            // if val.kind == MathTokenType::Variable {
+            let val = borrow.operands[v].val();
+
+            let var = val.variable.as_ref().unwrap();
+            if let Some(c) = CONSTANTS_MAP.get(var.as_str()) {
+                borrow.operands.replace_val(v, TreeNodeRef::constant(*c));
+            }
             // }
-            // borrow.add_operand(op);
         }
 
         // println!("simplifying {:#?}", borrow);
@@ -69,7 +74,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use rust_decimal_macros::dec;
 
-    fn simplify_test(expr: &str, res: TreeNodeRef){
+    fn simplify_test(expr: &str, res: TreeNodeRef) {
         let mut simplified = MathTree::parse(expr);
         let mut steps = Steps::new();
         if let Err(e) = simplified.simplify(&mut steps) {
