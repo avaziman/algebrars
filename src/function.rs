@@ -1,12 +1,10 @@
+use std::collections::HashMap;
+
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    arithmatic::OperationError,
-    math_tree::{MathTree, TreeNodeRef},
-    operands::OperandPos,
-    stepper::Steps,
-    MathTokenType,
+    arithmatic::OperationError, math_tree::{MathTree, TreeNodeRef}, operands::OperandPos, stepper::Steps, MathToken, MathTokenType, OperationToken
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -74,6 +72,20 @@ impl Function {
         tree.simplify(&mut steps)?;
 
         Ok(Some(tree.root.clone()))
+    }
+
+}
+
+struct FastFunction {
+    instructions: Vec<(OperationToken, Vec<MathToken>)>
+}
+
+impl FastFunction {
+    // faster evaluation for bulk points, uses floating point instead of deciaml, resulting in less accuracy
+    pub fn evaluate_float(&mut self, values: HashMap<String, f64>) -> Result<Option<f64>, OperationError> {
+        // for i in 
+
+        
     }
 }
 
