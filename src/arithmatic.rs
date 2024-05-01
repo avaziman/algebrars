@@ -1,3 +1,4 @@
+
 use rust_decimal::{Decimal, MathematicalOps};
 use rust_decimal_macros::dec;
 
@@ -250,6 +251,28 @@ impl MathTree {
     }
 }
 
+pub fn perform_op_constant<
+    T: std::ops::Sub<Output = T>
+        + std::ops::Add<Output = T>
+        + std::ops::Mul<Output = T>
+        + std::ops::Div<Output = T>
+        + Pow,
+>(
+    a: T,
+    b: T,
+    op: OperationToken,
+) -> T {
+    match op {
+        OperationToken::Subtract => a - b,
+        OperationToken::Add => a + b,
+        OperationToken::Multiply => a * b,
+        OperationToken::Divide => a / b,
+        OperationToken::Pow => a.pow(b),
+        OperationToken::Root => todo!(),
+        _ => unreachable!(),
+    }
+}
+
 impl TreeNodeRef {
     pub fn add(self, node: TreeNodeRef) -> TreeNodeRef {
         TreeNodeRef::new_vals(MathToken::operator(OperationToken::Add), vec![self, node])
@@ -260,5 +283,21 @@ impl TreeNodeRef {
             MathToken::operator(OperationToken::Subtract),
             vec![self, node],
         )
+    }
+}
+
+trait Pow {
+    fn pow(&self, b: Self) -> Self;
+}
+
+impl Pow for f64 {
+    fn pow(&self, b: Self) -> Self {
+        self.powf(b)
+    }
+}
+
+impl Pow for Decimal {
+    fn pow(&self, b: Self) -> Self {
+        self.powd(b)
     }
 }

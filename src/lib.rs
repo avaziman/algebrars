@@ -12,6 +12,7 @@ pub mod pattern;
 pub mod simplify;
 pub mod stepper;
 pub mod constants;
+pub mod fast_function;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;

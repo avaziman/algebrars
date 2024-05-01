@@ -5,7 +5,7 @@ use rust_decimal::prelude::ToPrimitive;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    arithmatic::{perform_op_constant, OperationError},
+    arithmatic::OperationError,
     math_tree::{MathTree, TreeNodeRef},
     operands::OperandPos,
     stepper::Steps,
@@ -21,7 +21,6 @@ pub struct Function {
     pub expression: MathTree,
     variable: Option<Vec<(TreeNodeRef, Option<OperandPos>)>>,
 }
-
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Function {
@@ -81,6 +80,60 @@ impl Function {
     }
 }
 
+type Instructions = Vec<(OperationToken, Vec<f64>)>;
+
+struct FastFunction {
+    instructions: Instructions,
+    // positions to replace with var name
+    replace: HashMap<String, Vec<usize>>,
+}
+
+impl FastFunction {
+    pub fn from(f: Function) -> Self {
+        // already simplified
+        f.expression
+    }
+
+    fn get_instructions(node: &TreeNodeRef, instructions: &mut Instructions) {
+        // instructions
+        for (pos, operand) in node.borrow().operand_iter() {
+            Self::get_instructions(operand, instructions);
+        }
+
+        let val = node.val();
+        if val.kind == MathTokenType::Operator {
+            // instructions.push((val.operation.unwrap(), ))
+            let mut operands = Vec::new();
+            for (_, op) in node.borrow().operand_iter() {
+                let val = op.val();
+                match val.kind {
+                    MathTokenType::Constant => {
+                        operands.push(val.constant.unwrap().to_f64().unwrap());
+                    }
+                    MathTokenType::Variable => todo!(),
+                    MathTokenType::Operator => todo!(),
+                }
+            }
+        }
+    }
+
+    // faster evaluation for bulk points, uses floating point instead of deciaml, resulting in less accuracy
+    pub fn evaluate_float(
+        &mut self,
+        values: HashMap<String, f64>,
+    ) -> Result<Option<f64>, OperationError> {
+        // just replace the variables and execute the instructions
+        for (var, indexes) in self.replace {
+            // TODO: handle error
+            let val = *values.get(&var).unwrap();
+            for (operator_index, operand_index) in indexes {
+                self.instructions[operator_index].1[operand_index] = val;
+            }
+        }
+
+        for operator in self.instructions {}
+    }
+}
 
 impl Function {
     pub fn scan_variables_node(
@@ -109,6 +162,7 @@ impl Function {
 // }
 #[cfg(test)]
 mod tests {
+    
     use crate::{
         arithmatic::OperationError,
         math_tree::{MathTree, TreeNodeRef},
