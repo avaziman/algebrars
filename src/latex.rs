@@ -88,5 +88,10 @@ mod tests {
             MathTree::parse("2 * 5 * 3 + 1 * 2 + 3").to_latex(),
             "(2*5*3)+(1*2)+3"
         );
+    
+        assert_eq!(
+            MathTree::parse("e^(x^2)").to_latex(),
+            "e^(x^2)"
+        );
     }
 }

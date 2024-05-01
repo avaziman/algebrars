@@ -58,7 +58,7 @@ impl FastFunction {
             // instructions.push((val.operation.unwrap(), ))
             let mut operands = Vec::new();
             let replace_len = replace.len();
-            for (_, op) in node.borrow().operand_iter() {
+            for (_, op) in node.borrow().operands.iter_order() {
                 let val = op.val();
                 match val.kind {
                     MathTokenType::Constant => {
@@ -151,6 +151,21 @@ pub mod tests {
         assert_eq!(
             fx.evaluate_float(vec![VariableVal::new("x".to_string(), 1.0)]),
             Ok(Some(1.0))
+        );
+    }
+
+    #[test]
+    fn fast_func_epxp2() {
+        let mut fx = FastFunction::from(Function::from(MathTree::parse("e^(x^2)")).unwrap());
+
+        // assert_eq!(
+        //     fx.evaluate_float(vec![VariableVal::new("x".to_string(), 6.0)]),
+        //     Ok(Some(46656.0))
+        // );
+
+        assert_eq!(
+            fx.evaluate_float(vec![VariableVal::new("x".to_string(), 1.0)]),
+            Ok(Some(2.718281828459045))
         );
     }
 }

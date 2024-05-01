@@ -2,7 +2,7 @@
 // valuable for optimizing simplification process and ordering arguments for readability
 
 use std::{
-    iter::{Chain, Map},
+    iter::{self, Chain, Map},
     ops::Index,
 };
 
@@ -118,7 +118,7 @@ impl Operands {
         *type_pos = new_type_pos;
         *tree = with;
     }
-    
+
     pub fn iter<'a>(&'a self) -> OperandsIt {
         self.operators()
             .chain(self.variables())
@@ -129,6 +129,10 @@ impl Operands {
         self.constants()
             .chain(self.variables())
             .chain(self.operators())
+    }
+
+    pub fn iter_mul_pos<'a>(&'a self) -> Map<slab::Iter<(TreeNodeRef, usize)>, impl FnMut((usize, &'a (TreeNodeRef, usize))) -> OperandPos>  {
+        self.nodes.iter().map(|(x, _)| OperandPos(x))
     }
 
     pub fn iter_order<'a>(

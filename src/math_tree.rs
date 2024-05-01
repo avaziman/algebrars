@@ -134,14 +134,14 @@ impl TreeNode {
 impl TreeNode {
     pub fn operand_iter<'a>(
         &'a self,
-    ) -> std::iter::Map<OperandsIt, impl FnMut(OperandPos) -> (OperandPos, &'a TreeNodeRef)> {
-        let iter = if self.val == MathToken::operator(OperationToken::Multiply) {
-            self.operands.iter_mul()
+    ) -> Box<dyn Iterator<Item=(OperandPos, &'a TreeNodeRef)> + 'a> {
+        if self.val == MathToken::operator(OperationToken::Multiply) {
+            let iter = self.operands.iter_mul();
+            Box::new(iter.map(|pos| (pos, &self.operands[pos])))
         } else {
-            self.operands.iter()
-        };
+            Box::new(self.operands.iter_order())
+        }
 
-        iter.map(|pos| (pos, &self.operands[pos]))
     }
 }
 
