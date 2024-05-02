@@ -9,6 +9,7 @@ use crate::{
     MathToken, MathTokenType, OperationToken,
 };
 use rust_decimal::prelude::ToPrimitive;
+use smallvec::SmallVec;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -32,8 +33,8 @@ impl VariableVal {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
 struct FastFunction {
     // instructions: Instructions,
-    operands: Vec<f64>,
-    operators: Vec<OperationToken>,
+    operands: SmallVec<[f64; 32]>,
+    operators: SmallVec<[OperationToken; 16]>,
     // positions to replace with var name
     replace: HashMap<String, Vec<usize>>,
 }
@@ -44,8 +45,8 @@ impl FastFunction {
     pub fn from(fexpr: &str) -> Result<FastFunction, ParseError> {
         // already simplified
         // let mut instructions = Instructions::new();
-        let mut operators = Vec::new();
-        let mut operands = Vec::new();
+        let mut operators = SmallVec::new();
+        let mut operands = SmallVec::new();
         let mut replace = HashMap::new();
         let rpn = MathTree::reverse_polish_notation(Lexer::new(fexpr))?;
 
