@@ -9,7 +9,7 @@ impl MathTree {
     // returns the nodes in the given tree that match the gives variables
     pub fn like(node: &TreeNodeRef, pattern: &str) -> Option<HashMap<String, TreeNodeRef>> {
         let mut variables = HashMap::new();
-        let pattern = MathTree::parse(pattern);
+        let pattern = MathTree::parse(pattern).unwrap();
 
         if !Self::node_like(node, &pattern.root, &mut variables) {
             return None;
@@ -70,14 +70,14 @@ mod tests {
 
     #[test]
     fn like_test() {
-        assert_eq!(MathTree::like(&MathTree::parse("2^3*2^4").root, "x^m*x^n"), Some(HashMap::from([
+        assert_eq!(MathTree::like(&MathTree::parse("2^3*2^4").unwrap().root, "x^m*x^n"), Some(HashMap::from([
             ("x".to_string(), TreeNodeRef::constant(dec!(2))),
             ("m".to_string(), TreeNodeRef::constant(dec!(3))),
             ("n".to_string(), TreeNodeRef::constant(dec!(4))),
         ])));
 
         
-        assert_eq!(MathTree::like(&MathTree::parse("(x + 2)^2").root, "(a + b)^2"), Some(HashMap::from([
+        assert_eq!(MathTree::like(&MathTree::parse("(x + 2)^2").unwrap().root, "(a + b)^2"), Some(HashMap::from([
             ("a".to_string(), TreeNodeRef::new_val(MathToken::variable(String::from("x")))),
             ("b".to_string(), TreeNodeRef::constant(dec!(2))),
         ])));

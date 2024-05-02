@@ -119,7 +119,7 @@ mod tests {
     use super::Function;
     #[test]
     fn evaluate_x() {
-        let mut fx = Function::from(MathTree::parse("x")).unwrap();
+        let mut fx = Function::from(MathTree::parse("x").unwrap()).unwrap();
 
         assert_eq!(
             fx.evaluate(TreeNodeRef::constant(dec!(4))),
@@ -139,7 +139,7 @@ mod tests {
 
     #[test]
     fn evaluate_xp2() {
-        let mut fx = Function::from(MathTree::parse("x^2")).unwrap();
+        let mut fx = Function::from(MathTree::parse("x^2").unwrap()).unwrap();
 
         assert_eq!(
             fx.evaluate(TreeNodeRef::constant(dec!(4))),
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn evaluate_xpx() {
-        let mut fx = Function::from(MathTree::parse("x^x")).unwrap();
+        let mut fx = Function::from(MathTree::parse("x^x").unwrap()).unwrap();
 
         assert_eq!(
             fx.evaluate(TreeNodeRef::constant(dec!(3))),
@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn evaluate_2p2() {
-        let mut fx = Function::from(MathTree::parse("2^2")).unwrap();
+        let mut fx = Function::from(MathTree::parse("2^2").unwrap()).unwrap();
 
         assert_eq!(
             fx.evaluate(TreeNodeRef::constant(dec!(3333))),

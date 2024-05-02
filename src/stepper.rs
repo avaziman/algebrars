@@ -46,7 +46,7 @@ pub mod tests {
     // }
 
     fn steps_test(expr: &str, res: TreeNodeRef, steps_check: Steps) -> Result<(), OperationError> {
-        let mut simplified = MathTree::parse(expr);
+        let mut simplified = MathTree::parse(expr).unwrap();
         let mut steps = Steps::new();
         simplified.simplify(&mut steps)?;
 

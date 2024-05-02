@@ -134,14 +134,13 @@ impl TreeNode {
 impl TreeNode {
     pub fn operand_iter<'a>(
         &'a self,
-    ) -> Box<dyn Iterator<Item=(OperandPos, &'a TreeNodeRef)> + 'a> {
+    ) -> Box<dyn Iterator<Item = (OperandPos, &'a TreeNodeRef)> + 'a> {
         if self.val == MathToken::operator(OperationToken::Multiply) {
             let iter = self.operands.iter_mul();
             Box::new(iter.map(|pos| (pos, &self.operands[pos])))
         } else {
             Box::new(self.operands.iter_order())
         }
-
     }
 }
 
@@ -155,9 +154,16 @@ pub struct MathTree {
 pub struct TreePos(pub Vec<OperandPos>);
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ParseError {
+    MissingOperand,
+    ParenthesesMismatch,
+}
+
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl MathTree {
-    pub fn parse(str: &str) -> Self {
-        let rpn = Self::reverse_polish_notation(Lexer::new(str));
+    pub fn parse(str: &str) -> Result<MathTree, ParseError> {
+        let rpn = Self::reverse_polish_notation(Lexer::new(str))?;
         let mut nodes: Vec<TreeNodeRef> = Vec::new();
 
         for token in rpn.into_iter() {
@@ -169,18 +175,21 @@ impl MathTree {
             let op_info = op.info();
             let split_at = nodes.len() - op_info.arity as usize;
             let operands = nodes.split_off(split_at);
+            if operands.len() != op_info.arity as usize {
+                return Err(ParseError::MissingOperand);
+            }
             nodes.push(TreeNodeRef::new_vals(token, operands));
         }
 
-        MathTree {
+        Ok(MathTree {
             root: nodes.pop().unwrap(),
-        }
+        })
     }
 }
 
 impl MathTree {
     // postfix notation
-    pub fn reverse_polish_notation(mut lexer: Lexer) -> Vec<MathToken> {
+    pub fn reverse_polish_notation(mut lexer: Lexer) -> Result<Vec<MathToken>, ParseError> {
         let mut output = Vec::new();
         let mut operators: Vec<OperationToken> = Vec::new();
 
@@ -228,7 +237,7 @@ impl MathTree {
                                 output.push(MathToken::operator(last_op));
                             }
                         }
-                        panic!("Parentheses Mismatch");
+                        return Err(ParseError::ParenthesesMismatch);
                     } else if op != OperationToken::LParent {
                         while let Some(last_op) = operators.last() {
                             if *last_op != OperationToken::LParent
@@ -252,7 +261,7 @@ impl MathTree {
                 .rev(),
         );
 
-        output
+        Ok(output)
     }
 
     // O(n) where n is the amount of leafs between the root and the desired remove
@@ -297,15 +306,15 @@ mod tests {
         let lexer = Lexer::new(txt);
         assert_eq!(
             MathTree::reverse_polish_notation(lexer.clone()),
-            vec![
+            Ok(vec![
                 MathToken::constant(dec!(2)),
                 MathToken::variable("x".to_string()),
                 MathToken::operator(OperationToken::Multiply),
-            ]
+            ])
         );
 
         assert_eq!(
-            MathTree::parse(txt).root,
+            MathTree::parse(txt).unwrap().root,
             TreeNodeRef::new_vals(
                 MathToken::operator(OperationToken::Multiply),
                 vec![
@@ -323,17 +332,17 @@ mod tests {
 
         assert_eq!(
             MathTree::reverse_polish_notation(lexer.clone()),
-            vec![
+            Ok(vec![
                 MathToken::constant(dec!(2)),
                 MathToken::variable("x".to_string()),
                 MathToken::operator(OperationToken::Multiply),
                 MathToken::constant(dec!(1)),
                 MathToken::operator(OperationToken::Add),
-            ]
+            ])
         );
 
         assert_eq!(
-            MathTree::parse(txt).root,
+            MathTree::parse(txt).unwrap().root,
             TreeNodeRef::new_vals(
                 MathToken::operator(OperationToken::Add),
                 vec![
@@ -354,7 +363,7 @@ mod tests {
     fn rpn_precedence2() {
         assert_eq!(
             MathTree::reverse_polish_notation(Lexer::new("2 * x + 1 * 3 + 4")),
-            vec![
+            Ok(vec![
                 MathToken::constant(dec!(2)),
                 MathToken::variable("x".to_string()),
                 MathToken::operator(OperationToken::Multiply),
@@ -364,7 +373,7 @@ mod tests {
                 MathToken::operator(OperationToken::Add),
                 MathToken::constant(dec!(4)),
                 MathToken::operator(OperationToken::Add),
-            ]
+            ])
         );
     }
 
@@ -372,13 +381,13 @@ mod tests {
     fn rpn_precedence_parentheses() {
         assert_eq!(
             MathTree::reverse_polish_notation(Lexer::new("2 * (x + 1)")),
-            vec![
+            Ok(vec![
                 MathToken::constant(dec!(2)),
                 MathToken::variable("x".to_string()),
                 MathToken::constant(dec!(1)),
                 MathToken::operator(OperationToken::Add),
                 MathToken::operator(OperationToken::Multiply),
-            ]
+            ])
         );
     }
 
@@ -389,7 +398,7 @@ mod tests {
         // 2 * (x + 5)
         assert_eq!(
             MathTree::reverse_polish_notation(lexer.clone()),
-            vec![
+            Ok(vec![
                 MathToken::constant(dec!(2)),
                 MathToken::constant(dec!(4)),
                 MathToken::variable("x".to_string()),
@@ -397,11 +406,11 @@ mod tests {
                 MathToken::operator(OperationToken::Add),
                 MathToken::operator(OperationToken::Add),
                 MathToken::operator(OperationToken::Multiply),
-            ]
+            ])
         );
 
         assert_eq!(
-            MathTree::parse(txt).root,
+            MathTree::parse(txt).unwrap().root,
             TreeNodeRef::new_vals(
                 MathToken::operator(OperationToken::Multiply),
                 vec![
@@ -423,7 +432,7 @@ mod tests {
 
         assert_eq!(
             MathTree::reverse_polish_notation(lexer.clone()),
-            vec![
+            Ok(vec![
                 MathToken::constant(dec!(2)),
                 MathToken::variable("x".to_string()),
                 MathToken::constant(dec!(1)),
@@ -433,11 +442,11 @@ mod tests {
                 MathToken::operator(OperationToken::Add),
                 MathToken::operator(OperationToken::Add),
                 MathToken::operator(OperationToken::Multiply),
-            ]
+            ])
         );
 
         assert_eq!(
-            MathTree::parse(txt).root,
+            MathTree::parse(txt).unwrap().root,
             TreeNodeRef::new_vals(
                 MathToken::operator(OperationToken::Multiply),
                 vec![
@@ -461,7 +470,7 @@ mod tests {
         let lexer = "2 + 3 + 4 * 2 * 3";
 
         assert_eq!(
-            MathTree::parse(lexer).root,
+            MathTree::parse(lexer).unwrap().root,
             TreeNodeRef::new_vals(
                 MathToken::operator(OperationToken::Add),
                 vec![
@@ -482,7 +491,7 @@ mod tests {
         let lexer = "2 + 2^2";
 
         assert_eq!(
-            MathTree::parse(lexer).root,
+            MathTree::parse(lexer).unwrap().root,
             TreeNodeRef::new_vals(
                 MathToken::operator(OperationToken::Add),
                 vec![

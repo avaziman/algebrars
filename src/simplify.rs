@@ -75,7 +75,7 @@ mod tests {
     use rust_decimal_macros::dec;
 
     fn simplify_test(expr: &str, res: TreeNodeRef) {
-        let mut simplified = MathTree::parse(expr);
+        let mut simplified = MathTree::parse(expr).unwrap();
         let mut steps = Steps::new();
         if let Err(e) = simplified.simplify(&mut steps) {
             panic!("{:?}", e);

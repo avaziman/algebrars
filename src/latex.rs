@@ -63,34 +63,34 @@ mod tests {
 
     #[test]
     pub fn simple_latex() {
-        assert_eq!(MathTree::parse("x").to_latex(), "x");
+        assert_eq!(MathTree::parse("x").unwrap().to_latex(), "x");
 
-        assert_eq!(MathTree::parse("2 * x").to_latex(), "2*x");
+        assert_eq!(MathTree::parse("2 * x").unwrap().to_latex(), "2*x");
 
-        assert_eq!(MathTree::parse("2 * (x + 1)").to_latex(), "2*(x+1)");
+        assert_eq!(MathTree::parse("2 * (x + 1)").unwrap().to_latex(), "2*(x+1)");
 
         assert_eq!(
-            MathTree::parse("2 * (x + 1 + (2 + 3))").to_latex(),
+            MathTree::parse("2 * (x + 1 + (2 + 3))").unwrap().to_latex(),
             "2*(x+1+2+3)"
         );
 
         assert_eq!(
-            MathTree::parse("2 * ((x) + (1) + (2 + 3))").to_latex(),
+            MathTree::parse("2 * ((x) + (1) + (2 + 3))").unwrap().to_latex(),
             "2*(x+1+2+3)"
         );
 
         assert_eq!(
-            MathTree::parse("1 + 5 + 2 * 5 + 3 + 1").to_latex(),
+            MathTree::parse("1 + 5 + 2 * 5 + 3 + 1").unwrap().to_latex(),
             "(2*5)+1+5+3+1"
         );
 
         assert_eq!(
-            MathTree::parse("2 * 5 * 3 + 1 * 2 + 3").to_latex(),
+            MathTree::parse("2 * 5 * 3 + 1 * 2 + 3").unwrap().to_latex(),
             "(2*5*3)+(1*2)+3"
         );
     
         assert_eq!(
-            MathTree::parse("e^(x^2)").to_latex(),
+            MathTree::parse("e^(x^2)").unwrap().to_latex(),
             "e^(x^2)"
         );
     }
