@@ -28,7 +28,7 @@ impl Equation {
     pub fn solve(&self) -> EquationSolution {
         // concentrate the variable in the same side
         // self.left
-
+        
 
 
         EquationSolution::NoSolution

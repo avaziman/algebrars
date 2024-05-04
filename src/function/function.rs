@@ -1,15 +1,14 @@
-use std::collections::HashMap;
+
 
 use itertools::Itertools;
-use rust_decimal::prelude::ToPrimitive;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    arithmatic::{perform_op_constant, OperationError},
+    arithmatic::OperationError,
     math_tree::{MathTree, TreeNodeRef},
     operands::OperandPos,
-    stepper::Steps,
-    MathToken, MathTokenType, OperationToken,
+    stepper::Steps, MathTokenType,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -18,7 +17,7 @@ use wasm_bindgen::prelude::*;
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Function {
-    pub expression: MathTree,
+    pub simplified: MathTree,
     variable: Option<Vec<(TreeNodeRef, Option<OperandPos>)>>,
 }
 
@@ -51,14 +50,14 @@ impl Function {
         };
 
         Ok(Self {
-            expression: tree,
+            simplified: tree,
             variable,
         })
     }
 
     pub fn evaluate(&mut self, val: TreeNodeRef) -> Result<Option<TreeNodeRef>, OperationError> {
         let Some(variables) = &mut self.variable else {
-            return Ok(Some(self.expression.root.clone()));
+            return Ok(Some(self.simplified.root.clone()));
         };
 
         // let new_tree = MathTree::copy(&self.expression.root);
@@ -72,7 +71,7 @@ impl Function {
             }
             // new_variables.push((parent, ));
         }
-        let mut tree = self.expression.copy();
+        let mut tree = self.simplified.copy();
 
         let mut steps = Steps::new();
         tree.simplify(&mut steps)?;
@@ -102,11 +101,7 @@ impl Function {
         variables.extend(b);
     }
 }
-// #[cfg(target_arch = "wasm32")]
-// #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-// pub fn export_function(expr: &str) -> JsValue {
-//     serde_wasm_bindgen::to_value(&Function::from(MathTree::parse(expr))).unwrap()
-// }
+
 #[cfg(test)]
 mod tests {
     use crate::{

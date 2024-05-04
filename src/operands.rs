@@ -2,7 +2,7 @@
 // valuable for optimizing simplification process and ordering arguments for readability
 
 use std::{
-    iter::{self, Chain, Map},
+    iter::{Chain, Map},
     ops::Index,
 };
 

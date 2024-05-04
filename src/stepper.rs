@@ -30,13 +30,13 @@ impl Steps {
 
 #[cfg(test)]
 pub mod tests {
-    use rust_decimal_macros::dec;
+    
 
     use crate::{
         arithmatic::OperationError, math_tree::{MathTree, TreeNodeRef}, stepper::Steps
     };
 
-    use super::Step;
+    
 
     // fn steps_from_it(it: impl Iterator<Item = Step>) -> Steps {
     //     let steps = Steps::new();

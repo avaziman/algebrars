@@ -5,7 +5,6 @@ use crate::{
     constants::CONSTANTS_MAP,
     math_tree::{MathTree, TreeNodeRef},
     stepper::Steps,
-    MathTokenType,
 };
 
 // since contrary to addition, substraction is not an orderless operation,

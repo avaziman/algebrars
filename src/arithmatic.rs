@@ -286,7 +286,7 @@ impl TreeNodeRef {
     }
 }
 
-trait Pow {
+pub trait Pow {
     fn pow(&self, b: Self) -> Self;
 }
 

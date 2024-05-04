@@ -4,9 +4,7 @@ use itertools::Itertools;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 
-use crate::{
-    math_tree::{MathTree, TreeNodeRef},
-};
+use crate::math_tree::{MathTree, TreeNodeRef};
 
 impl MathTree {
     pub(crate) fn find_common_multiplier(multipliers: Vec<TreeNodeRef>) {

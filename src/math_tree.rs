@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     lexer::Lexer,
-    operands::{OperandPos, Operands, OperandsIt},
+    operands::{OperandPos, Operands},
     MathToken, MathTokenType, OperationToken,
 };
 
