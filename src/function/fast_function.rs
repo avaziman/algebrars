@@ -101,7 +101,7 @@ impl MathTree {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl FastFunction {
     // no math tree needed
-    pub fn from(f: Function) -> Result<FastFunction, ParseError> {
+    pub fn from(f: &Function) -> Result<FastFunction, ParseError> {
         // already simplified
         // let mut instructions = Instructions::new();
         let (rpn, replace) = f.simplified.to_fast_rpn();
@@ -173,7 +173,7 @@ pub mod tests {
     fn fast_func_xp2() {
         // let mut fx = FastFunction::from(Function::from(.unwrap();
         let mut fx =
-            FastFunction::from(Function::from(MathTree::parse("x^2").unwrap()).unwrap()).unwrap();
+            FastFunction::from(&Function::from(MathTree::parse("x^2").unwrap()).unwrap()).unwrap();
 
         assert_eq!(
             fx.evaluate_float(vec![VariableVal::new("x".to_string(), 6.0)]),
@@ -189,7 +189,7 @@ pub mod tests {
     #[test]
     fn fast_func_xpx() {
         let mut fx =
-            FastFunction::from(Function::from(MathTree::parse("x^x").unwrap()).unwrap()).unwrap();
+            FastFunction::from(&Function::from(MathTree::parse("x^x").unwrap()).unwrap()).unwrap();
 
         assert_eq!(
             fx.evaluate_float(vec![VariableVal::new("x".to_string(), 6.0)]),
@@ -205,7 +205,7 @@ pub mod tests {
     #[test]
     fn fast_func_epxp2() {
         let mut fx =
-            FastFunction::from(Function::from(MathTree::parse("e^(x^2)").unwrap()).unwrap())
+            FastFunction::from(&Function::from(MathTree::parse("e^(x^2)").unwrap()).unwrap())
                 .unwrap();
 
         assert_eq!(
@@ -222,7 +222,7 @@ pub mod tests {
     #[test]
     fn fast_func_xp2d2() {
         let mut fx =
-            FastFunction::from(Function::from(MathTree::parse("(x^2)/x").unwrap()).unwrap())
+            FastFunction::from(&Function::from(MathTree::parse("(x^2)/x").unwrap()).unwrap())
                 .unwrap();
 
         assert_eq!(

@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use itertools::Itertools;
 
 use crate::{
-    arithmatic::OperationError,
+    arithmatic::{perform_op, OperationError},
     constants::CONSTANTS_MAP,
-    math_tree::{MathTree, TreeNodeRef},
+    math_tree::{MathTree, TreeNodeRef, VarBounds},
     stepper::Steps,
 };
 
@@ -13,7 +15,7 @@ use crate::{
 
 impl MathTree {
     pub fn simplify(&mut self, steps: &mut Steps) -> Result<(), OperationError> {
-        while let Some(complete) = Self::simplify_node(&mut self.root, steps)? {
+        while let Some(complete) = Self::simplify_node(&mut self.root, steps, &mut self.bounds)? {
             self.root = complete;
         }
         Ok(())
@@ -22,6 +24,7 @@ impl MathTree {
     fn simplify_node(
         node: &mut TreeNodeRef,
         steps: &mut Steps,
+        bounds: &mut VarBounds,
     ) -> Result<Option<TreeNodeRef>, OperationError> {
         // let node = &mut self.root;
         let val = node.val();
@@ -36,7 +39,7 @@ impl MathTree {
         // let mut multipliers = Vec::new();
         for op_pos in operators {
             let mut op = borrow.operands[op_pos].clone();
-            if let Some(complete) = Self::simplify_node(&mut op, steps)? {
+            if let Some(complete) = Self::simplify_node(&mut op, steps, bounds)? {
                 borrow.operands.replace_val(op_pos, complete);
             }
         }
@@ -55,11 +58,13 @@ impl MathTree {
         // println!("simplifying {:#?}", borrow);
         std::mem::drop(borrow);
 
-        Ok(if let Some(complete) = Self::perform_op(node, steps)? {
-            Some(complete)
-        } else {
-            None
-        })
+        Ok(
+            if let Some(complete) = perform_op(bounds, node, steps)? {
+                Some(complete)
+            } else {
+                None
+            },
+        )
     }
 }
 
@@ -121,13 +126,18 @@ mod tests {
             ),
         );
 
+        simplify_test(
+            "x + 5 - 5",
+            TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
+        );
+
         // simplify_test(
         //     "2*x + x",
         //     TreeNodeRef::new_vals(
-        //         MathToken::Op(OperationToken::Multiply),
+        //         MathToken::operator(OperationToken::Multiply),
         //         vec![
         //             TreeNodeRef::constant(dec!(3)),
-        //             TreeNodeRef::new_val(MathToken::Variable(String::from("x"))),
+        //             TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
         //         ],
         //     ),
         // );
@@ -145,8 +155,8 @@ mod tests {
             TreeNodeRef::new_vals(
                 MathToken::operator(OperationToken::Multiply),
                 vec![
-                    TreeNodeRef::constant(dec!(-1)),
                     TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
+                    TreeNodeRef::constant(dec!(-1)),
                 ],
             ),
         );

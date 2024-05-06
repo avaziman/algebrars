@@ -1,19 +1,20 @@
 pub mod arithmatic;
+pub mod bounds;
 pub mod cancel_op;
+pub mod constants;
 pub mod equations;
 pub mod expand;
 pub mod factorization;
 pub mod function;
+pub mod geometry;
 pub mod latex;
 pub mod lexer;
 pub mod math_tree;
 pub mod operands;
 pub mod pattern;
+mod rewriting_rules;
 pub mod simplify;
 pub mod stepper;
-pub mod constants;
-pub mod bounds;
-pub mod geometry;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -24,16 +25,27 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Serialize, Deserialize)]
 pub enum OperationToken {
-    Subtract,
+    /* order critical */
     Add,
+    Subtract,
     Multiply,
     Divide,
-    FractionDivide,
     Pow,
     Root,
+    /* order critical */
+
     LParent,
     RParent,
 }
+
+pub const OPPOSITE_OPERATOR: [OperationToken; 6] = [
+    OperationToken::Subtract,
+    OperationToken::Add,
+    OperationToken::Divide,
+    OperationToken::Multiply,
+    OperationToken::Root,
+    OperationToken::Pow,
+];
 
 pub struct OperatorInfo {
     // how many operands
@@ -73,7 +85,6 @@ impl OperationToken {
                 precedence: 3,
                 orderless: false,
             },
-            OperationToken::FractionDivide => todo!(),
             OperationToken::LParent | OperationToken::RParent => unreachable!(),
         }
     }

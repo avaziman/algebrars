@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
 use crate::{
+    bounds::Bound,
     lexer::Lexer,
     operands::{OperandPos, Operands},
     MathToken, MathTokenType, OperationToken,
@@ -143,12 +144,14 @@ impl TreeNode {
         }
     }
 }
+pub type VarBounds = HashMap<String, Vec<Bound>>;
 
 // abstract syntax tree
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MathTree {
     pub(crate) root: TreeNodeRef,
+    pub(crate) bounds: VarBounds,
 }
 
 pub struct TreePos(pub Vec<OperandPos>);
@@ -183,7 +186,12 @@ impl MathTree {
 
         Ok(MathTree {
             root: nodes.pop().unwrap(),
+            bounds: HashMap::new(),
         })
+    }
+
+    pub (crate) fn add_op(&mut self, op_token: OperationToken, node: TreeNodeRef) {
+        self.root = self.root.op(op_token, node);
     }
 }
 
@@ -213,7 +221,8 @@ impl MathTree {
                             insert.push((i, MathToken::constant(dec!(0))))
                         }
                         // OperationToken::Add => todo!(),
-                        _ => {}
+                        OperationToken::LParent => {}
+                        _ => unreachable!(),
                     }
                 }
             }
@@ -264,7 +273,7 @@ impl MathTree {
         Ok(output)
     }
 
-    // O(n) where n is the amount of leafs between the root and the desired remove
+    // O(n) where n is the amount of leafs between the root and the deired remove
     // pub fn remove(&mut self, mut pos: TreePos) {
     //     let mut node = self.root.clone();
     //     let last_pos = pos.0.pop().expect("empty pos");
@@ -279,6 +288,7 @@ impl MathTree {
     pub fn copy(&self) -> MathTree {
         MathTree {
             root: Self::copy_node(&self.root),
+            bounds: self.bounds.clone(),
         }
     }
     fn copy_node(node: &TreeNodeRef) -> TreeNodeRef {
