@@ -47,14 +47,10 @@ impl Index<OperandPos> for Operands {
     type Output = TreeNodeRef;
 
     fn index(&self, index: OperandPos) -> &Self::Output {
-        // match index.kind {
-        //     MathTokenType::Constant => &self.constants[index.type_pos],
-        //     MathTokenType::Operator => &self.operators[index.type_pos],
-        //     MathTokenType::Variable => &self.variables[index.type_pos],
-        // }
         &self.nodes[index.0].0
     }
 }
+
 
 impl Operands {
     pub fn push(&mut self, node: TreeNodeRef) {

@@ -138,7 +138,12 @@ impl FastFunction {
         // just replace the variables and execute the instructions
         for (var, indexes) in &self.replace {
             // TODO: handle error
-            let val = FastFunctionMathToken::val(*values.get(var).unwrap());
+            let val = match values.get(var) {
+                Some(v) => *v,
+                None => CONSTANTS_MAP.get(var.as_str()).unwrap().to_f64().unwrap(),
+            };
+
+            let val = FastFunctionMathToken::val(val);
             for index in indexes {
                 self.rpn[*index] = val;
             }

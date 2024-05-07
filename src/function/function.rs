@@ -46,7 +46,7 @@ impl Function {
         // TODO find more efficient way for root
         for (parent, pos) in &self.variables {
             if let Some(pos) = pos {
-                parent.borrow_mut().operands.replace_val(*pos, val.clone());
+                parent.borrow_mut().replace_operand(*pos, val.clone());
             } else {
                 // root
                 parent.replace(val.clone());
@@ -82,7 +82,7 @@ impl Function {
         }
 
         let b = borrow
-            .operands
+            .operands()
             .variables()
             .map(|pos| (node.clone(), Some(pos)))
             .collect_vec();

@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, ops::Index, rc::Rc};
 
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
@@ -22,12 +22,20 @@ pub struct TreeNode {
     // #[cfg(target_arch = "wasm32")]
     // #[wasm_bindgen(getter_with_clone)]
     // #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
-    pub operands: Operands,
+    operands: Operands,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Clone, Serialize, Deserialize)]
 pub struct TreeNodeRef(Rc<RefCell<TreeNode>>);
+
+impl Index<OperandPos> for TreeNode {
+    type Output = TreeNodeRef;
+
+    fn index(&self, index: OperandPos) -> &Self::Output {
+        &self.operands[index]
+    }
+}
 
 impl PartialEq for TreeNodeRef {
     fn eq(&self, other: &TreeNodeRef) -> bool {
@@ -110,25 +118,41 @@ impl TreeNode {
         node
     }
 
-    // merges orderless
-    pub fn add_operand(&mut self, operand: TreeNodeRef) {
-        let op_token = self.val.clone();
-
-        if let Some(op) = op_token.operation {
+    fn try_merge(&mut self, operand: &TreeNodeRef) -> bool {
+        if let Some(op) = self.val.operation {
             // merge operands that use the same operator and are orderless
-            if op.info().orderless && operand.val() == op_token {
+            if op.info().orderless && operand.val() == self.val {
                 self.operands.extend(&operand.borrow().operands);
-                return;
+                return true;
             }
         }
 
-        // not mergeable, add regular operand
-        self.operands.push(operand);
+        false
+    }
+
+    // merges orderless
+    pub fn add_operand(&mut self, operand: TreeNodeRef) {
+        if !self.try_merge(&operand) {
+            // not mergeable, add regular operand
+            self.operands.push(operand);
+        }
+    }
+
+    pub fn replace_operand(&mut self, op_pos: OperandPos, with: TreeNodeRef) {
+        if self.try_merge(&with) {
+            self.operands.remove(op_pos);
+        }else {
+            self.operands.replace_val(op_pos, with);
+        }
     }
 
     // #[wasm_bindgen(getter)]
-    pub fn operands(&self) -> Operands {
-        self.operands.clone()
+    pub fn operands(&self) -> &Operands {
+        &self.operands
+
+    }
+pub fn operands_mut(&mut self) -> &mut Operands {
+        &mut self.operands
     }
 }
 

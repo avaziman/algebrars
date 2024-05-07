@@ -32,15 +32,15 @@ impl MathTree {
                 if let Some(op2) = check_node.val().operation {
                     let b1 = check_node.borrow();
                     let b2= pattern_node.borrow();
-                    let iter1 = b1.operands.iter();
-                    let iter2 = b2.operands.iter();
+                    let iter1 = b1.operand_iter();
+                    let iter2 = b2.operand_iter();
                     // operation type must match
                     op == op2 &&
                     // operands length must match
-                    b1.operands.len() == b2.operands.len() &&
+                    b1.operands().len() == b2.operands().len() &&
                     // all the childs must match the rest of the pattern
-                    iter1.zip(iter2).all(|(a, b)| 
-                        Self::node_like(&b1.operands[a], &b2.operands[b], variables))
+                    iter1.zip(iter2).all(|((_,a), (_, b))| 
+                        Self::node_like(a, b, variables))
                 } else {
                     false
                 }

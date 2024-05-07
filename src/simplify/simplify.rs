@@ -11,6 +11,7 @@ use crate::{
 
 use super::symmetry::symmetrical_scan;
 
+
 // since contrary to addition, substraction is not an orderless operation,
 // for simplification purposes, it is easier to represent substration as addition of a negative term
 // this allows for grouping of addition and substraction
@@ -47,25 +48,25 @@ impl MathTree {
 
         let mut borrow = node.borrow_mut();
 
-        let operators = borrow.operands.operators().collect_vec();
+        let operators = borrow.operands().operators().collect_vec();
         // let mut multipliers = Vec::new();
         for op_pos in operators {
-            let mut op = borrow.operands[op_pos].clone();
+            let mut op = borrow[op_pos].clone();
             if let Some(complete) = Self::simplify_node(&mut op, steps, bounds)? {
-                borrow.operands.replace_val(op_pos, complete);
+                borrow.replace_operand(op_pos, complete);
             }
         }
 
-        for v in borrow.operands.variables().collect_vec() {
-            // if val.kind == MathTokenType::Variable {
-            let val = borrow.operands[v].val();
+        // for v in borrow.operands.variables().collect_vec() {
+        //     // if val.kind == MathTokenType::Variable {
+        //     let val = borrow[v].val();
 
-            let var = val.variable.as_ref().unwrap();
-            if let Some(c) = CONSTANTS_MAP.get(var.as_str()) {
-                borrow.operands.replace_val(v, TreeNodeRef::constant(*c));
-            }
-            // }
-        }
+        //     let var = val.variable.as_ref().unwrap();
+        //     if let Some(c) = CONSTANTS_MAP.get(var.as_str()) {
+        //         borrow.operands.replace_val(v, TreeNodeRef::constant(*c));
+        //     }
+        //     // }
+        // }
 
         // println!("simplifying {:#?}", borrow);
         std::mem::drop(borrow);
@@ -142,7 +143,12 @@ mod tests {
             "x + 5 - 5",
             TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
         );
-
+ 
+        simplify_test(
+            "x - 5 + 5",
+            TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
+        );       
+        
         // simplify_test(
         //     "2*x + x",
         //     TreeNodeRef::new_vals(

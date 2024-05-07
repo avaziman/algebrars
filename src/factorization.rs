@@ -15,14 +15,14 @@ impl MathTree {
                 let borrow = n.borrow();
                 let mut constants =
                     borrow
-                        .operands
+                        .operands()
                         .constants()
                         .map(|pos | {
                             // let MathToken::Constant(c) = n.val() else {
                             //     unreachable!()
                             // };
                             // c
-                            borrow.operands[pos].val().constant.unwrap()
+                            borrow[pos].val().constant.unwrap()
                             // n.val().constant.unwrap()
                         })
                         .collect_vec();
@@ -38,13 +38,13 @@ impl MathTree {
             .map(|n| {
                 let borrow = n.borrow();
                 borrow
-                    .operands
+                    .operands()
                     .variables()
                     .map(|pos| {
                         // let MathToken::Variable(v) = n.val() else {
                         //     unreachable!()
                         // };
-                        borrow.operands[pos].val().variable.unwrap()
+                        borrow[pos].val().variable.unwrap()
                     })
                     .collect_vec()
             })

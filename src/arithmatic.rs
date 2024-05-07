@@ -4,7 +4,7 @@ use rust_decimal::{Decimal, MathematicalOps};
 use rust_decimal_macros::dec;
 
 use crate::{
-    bounds::Bound, math_tree::{MathTree, TreeNodeRef, VarBounds}, simplify::symmetry::symmetrical_scan, stepper::{Step, Steps}, MathToken, OperationToken
+    bounds::Bound, math_tree::{MathTree, TreeNodeRef, VarBounds}, stepper::{Step, Steps}, MathToken, OperationToken
 };
 
 // the operands are checked against these scenarios as they usually result in a different behavior and explanation
@@ -78,19 +78,18 @@ pub fn perform_op(
     let mut remaining = Vec::new();
     let orderless = op.info().orderless;
     loop {
-        if borrow.operands.len() < 2 {
+        if borrow.operands().len() < 2 {
             break;
         }
 
-        let a = borrow.operands.pop_front(orderless).unwrap();
-        let b = borrow.operands.pop_front(orderless).unwrap();
+        let a = borrow.operands_mut().pop_front(orderless).unwrap();
+        let b = borrow.operands_mut().pop_front(orderless).unwrap();
 
         let desc = get_description(&a, &b, orderless);
         let step = Step::PerformOp(desc.clone());
         if let Some(res) = do_op(&a, &b, desc, bounds)? {
             steps.step((&a, &b), &res, step);
             // a = res.clone();
-            // operands.add(res);
             borrow.add_operand(res);
         } else {
             remaining.push(b);
@@ -99,11 +98,12 @@ pub fn perform_op(
     }
 
     for r in remaining {
-        borrow.operands.push(r);
+        borrow.operands_mut().push(r);
     }
 
-    Ok(if borrow.operands.len() == 1 {
-        let val = borrow.operands.pop_front(true).unwrap();
+    Ok(if borrow.operands().len() == 1 {
+        // TODO: clean
+        let val = borrow.operands_mut().pop_front(true).unwrap();
         std::mem::drop(borrow);
         // replacing can only be done through operands as it may change token type
         // operation is complete, this is the single result
