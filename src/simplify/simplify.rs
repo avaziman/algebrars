@@ -6,8 +6,10 @@ use crate::{
     arithmatic::{perform_op, OperationError},
     constants::CONSTANTS_MAP,
     math_tree::{MathTree, TreeNodeRef, VarBounds},
-    stepper::Steps,
+    stepper::Steps, OperationToken,
 };
+
+use super::symmetry::symmetrical_scan;
 
 // since contrary to addition, substraction is not an orderless operation,
 // for simplification purposes, it is easier to represent substration as addition of a negative term
@@ -18,6 +20,16 @@ impl MathTree {
         while let Some(complete) = Self::simplify_node(&mut self.root, steps, &mut self.bounds)? {
             self.root = complete;
         }
+
+        if self.root.val().operation == Some(OperationToken::Divide) {
+            symmetrical_scan(self.root.clone());
+        }
+
+         if let Some(complete) = Self::simplify_node(&mut self.root, steps, &mut self.bounds)? {
+            self.root = complete;
+        }
+
+      
         Ok(())
     }
 

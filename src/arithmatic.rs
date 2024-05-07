@@ -4,10 +4,7 @@ use rust_decimal::{Decimal, MathematicalOps};
 use rust_decimal_macros::dec;
 
 use crate::{
-    bounds::Bound,
-    math_tree::{MathTree, TreeNodeRef, VarBounds},
-    stepper::{Step, Steps},
-    MathToken, OperationToken,
+    bounds::Bound, math_tree::{MathTree, TreeNodeRef, VarBounds}, simplify::symmetry::symmetrical_scan, stepper::{Step, Steps}, MathToken, OperationToken
 };
 
 // the operands are checked against these scenarios as they usually result in a different behavior and explanation

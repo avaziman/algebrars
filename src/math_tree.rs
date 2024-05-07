@@ -190,7 +190,7 @@ impl MathTree {
         })
     }
 
-    pub (crate) fn add_op(&mut self, op_token: OperationToken, node: TreeNodeRef) {
+    pub(crate) fn add_op(&mut self, op_token: OperationToken, node: TreeNodeRef) {
         self.root = self.root.op(op_token, node);
     }
 }
@@ -299,6 +299,25 @@ impl MathTree {
         }
 
         TreeNodeRef::new_vals(node.val(), children)
+    }
+
+    pub fn find(&self, val: &MathToken) -> Option<TreeNodeRef> {
+        Self::find_node(&self.root, val)
+    }
+
+    pub fn find_node(node: &TreeNodeRef, val: &MathToken) -> Option<TreeNodeRef> {
+        if node.val() == *val {
+            return Some(node.clone());
+        }
+
+        let borrow = node.borrow();
+        for op in borrow.operands.iter() {
+            if let Some(s) = Self::find_node(&borrow.operands[op], val) {
+                return Some(s);
+            }
+        }
+
+        None
     }
 }
 

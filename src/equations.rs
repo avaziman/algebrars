@@ -59,26 +59,60 @@ impl Equation {
         //     self.flip_sides();
         // }
 
+        // for lvar in left_variables {
+        //     // lvar
+        //     match right_variables {
+
+        //     }
+
+        // }
+        // for op in self.right {
+
+        // }
+        let mut steps = Steps::new();
+
+        let var = MathToken::variable(String::from("x"));
+        while self.left.root.val() != var {
+            self.right.simplify(&mut steps).unwrap();
+            self.left.simplify(&mut steps).unwrap();
+
+            let borrow = self.left.root.borrow();
+            let to_eliminate = borrow
+                .operand_iter()
+                .filter_map(|(_, x)| match MathTree::find_node(x, &var) {
+                    Some(_) => None,
+                    None => Some(x.clone()),
+                })
+                .collect_vec();
+
+            std::mem::drop(borrow);
+            for elim in to_eliminate {
+                self.add_op(self.left.root.val().operation.unwrap().opposite(), elim);
+            }
+        }
+
         // we have isolated the variable
         if right_variables.is_empty() {
-            let mut steps = Steps::new();
             // TODO: handle err
             self.right.simplify(&mut steps).unwrap();
 
             for (lvar, pos) in left_variables {
                 // find common
 
-                if let Some(node) = lvar.borrow().operands.iter().find(|x| Some(*x) != pos) {
-                    let node =  lvar.borrow().operands[node].clone();
-                    self.add_op(
-                        Self::opposite_operator(lvar.val().operation.unwrap()),
-                      node 
-                    );
+                // can only cancel the topmost operator
 
-                    // self.right.simplify(&mut steps).unwrap();
-                }
+                // if let Some(node) = lvar.borrow().operands.iter().find(|x| Some(*x) != pos) {
+                //     let node =  lvar.borrow().operands[node].clone();
+                //     self.add_op(
+                //         Self::opposite_operator(lvar.val().operation.unwrap()),
+                //       node
+                //     );
+
+                //     // self.right.simplify(&mut steps).unwrap();
+                // }
             }
             self.left.simplify(&mut steps).unwrap();
+            self.right.simplify(&mut steps).unwrap();
 
             return EquationSolution::SolutionsFor(
                 self.left.root.clone(),
@@ -103,27 +137,6 @@ impl Equation {
         self.left.add_op(op_token, node);
     }
 
-    // pub fn add(&mut self, node: TreeNodeRef) {
-    //     self.left.add(node)
-    //     self.right.add(node)
-    // }
-
-    // pub fn subtract(&self, node: TreeNodeRef) {
-    //     self.op(OperationToken::Subtract, node)
-    // }
-
-    // pub fn multiply(&self, node: TreeNodeRef) {
-    //     self.op(OperationToken::Multiply, node)
-    // }
-
-    // pub fn divide(&self, node:TreeNodeRef) {
-    //     self.op(OperationToken::Divide, node)
-    // }
-
-    // pub fn pow(&self, node: TreeNodeRef) {
-    //     self.op(OperationToken::Pow, node)
-    // }
-
     fn move_variable_left(&mut self) {}
 
     fn move_variable_left_node() {}
@@ -141,7 +154,7 @@ mod tests {
 
     use crate::{
         equations::Equation,
-        math_tree::{MathTree, ParseError, TreeNodeRef},
+        math_tree::{ParseError, TreeNodeRef},
         MathToken,
     };
     use pretty_assertions::assert_eq;
@@ -168,10 +181,15 @@ mod tests {
     pub fn simple_equation() -> Result<(), ParseError> {
         // assert_eq!(Equation)
 
-        // equation_test_single_x("x = 2+5", TreeNodeRef::constant(dec!(7)));
+        equation_test_single_x("x = 2+5", TreeNodeRef::constant(dec!(7)));
 
-        equation_test_single_x("2*x = 2", TreeNodeRef::constant(dec!(7)));
+        equation_test_single_x("2*x = 2", TreeNodeRef::constant(dec!(1)));
 
+        equation_test_single_x("x + 5 = 8", TreeNodeRef::constant(dec!(3)));
+
+        equation_test_single_x("2 * x + 5 = 8", TreeNodeRef::constant(dec!(1.5)));
+        
+        equation_test_single_x("2 * x + 5 = x + 5", TreeNodeRef::constant(dec!(0)));
         Ok(())
     }
 }

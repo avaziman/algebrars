@@ -92,7 +92,7 @@ impl Operands {
         }
     }
 
-    fn remove(&mut self, pos: OperandPos) -> TreeNodeRef {
+    pub fn remove(&mut self, pos: OperandPos) -> TreeNodeRef {
         let (tree, type_pos) = self.nodes.remove(pos.0);
         self.remove_type_index(&tree, type_pos);
         tree

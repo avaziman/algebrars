@@ -33,7 +33,6 @@ pub enum OperationToken {
     Pow,
     Root,
     /* order critical */
-
     LParent,
     RParent,
 }
@@ -95,6 +94,10 @@ impl OperationToken {
             _ => false,
         }
     }
+
+    pub fn opposite(&self) -> OperationToken {
+        OPPOSITE_OPERATOR[*self as usize]
+    }
 }
 
 // struct MathTokenType
@@ -115,7 +118,7 @@ impl std::fmt::Debug for MathToken {
         match self.kind {
             MathTokenType::Constant => write!(f, "{}", self.constant.unwrap()),
             MathTokenType::Variable => write!(f, "{}", self.variable.as_ref().unwrap()),
-            MathTokenType::Operator => write!(f, "{:?}", self.operation),
+            MathTokenType::Operator => write!(f, "{:?}", self.operation.unwrap()),
         }
     }
 }
