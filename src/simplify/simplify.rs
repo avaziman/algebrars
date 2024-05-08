@@ -6,11 +6,11 @@ use crate::{
     arithmatic::{perform_op, OperationError},
     constants::CONSTANTS_MAP,
     math_tree::{MathTree, TreeNodeRef, VarBounds},
-    stepper::Steps, OperationToken,
+    stepper::Steps,
+    OperationToken,
 };
 
 use super::symmetry::symmetrical_scan;
-
 
 // since contrary to addition, substraction is not an orderless operation,
 // for simplification purposes, it is easier to represent substration as addition of a negative term
@@ -18,19 +18,11 @@ use super::symmetry::symmetrical_scan;
 
 impl MathTree {
     pub fn simplify(&mut self, steps: &mut Steps) -> Result<(), OperationError> {
+        println!("Simplifying: {:?}", self.to_latex());
         while let Some(complete) = Self::simplify_node(&mut self.root, steps, &mut self.bounds)? {
             self.root = complete;
         }
 
-        if self.root.val().operation == Some(OperationToken::Divide) {
-            symmetrical_scan(self.root.clone());
-        }
-
-         if let Some(complete) = Self::simplify_node(&mut self.root, steps, &mut self.bounds)? {
-            self.root = complete;
-        }
-
-      
         Ok(())
     }
 
@@ -45,18 +37,41 @@ impl MathTree {
         if !val.is_operator() {
             return Ok(None);
         }
+        if val.operation == Some(OperationToken::Divide) {
+            symmetrical_scan(node.clone());
+        }
 
         let mut borrow = node.borrow_mut();
 
-        let operators = borrow.operands().operators().collect_vec();
+        // let mut operators = borrow.operands().operators().collect_vec();
         // let mut multipliers = Vec::new();
-        for op_pos in operators {
+        let mut skip = 0;
+        while let Some(op_pos) = borrow.operands().operators().skip(skip).next() {
             let mut op = borrow[op_pos].clone();
+            skip += 1;
+            // possibly simplified to an operator and can be simplified
             if let Some(complete) = Self::simplify_node(&mut op, steps, bounds)? {
+                // either there is new operator or one is gone
+                if complete.val().is_operator() {
+                    skip -= 1;
+                }
                 borrow.replace_operand(op_pos, complete);
+            }
+
+            // flatten
+            if op.borrow().operands().len() == 1 {
+                let val = op
+                    .borrow()
+                    .calculate_iter()
+                    .map(|x| x.1.clone())
+                    .next()
+                    .unwrap();
+
+                node.borrow_mut().replace_operand(op_pos, val);
             }
         }
 
+        // inject constants
         // for v in borrow.operands.variables().collect_vec() {
         //     // if val.kind == MathTokenType::Variable {
         //     let val = borrow[v].val();
@@ -71,13 +86,7 @@ impl MathTree {
         // println!("simplifying {:#?}", borrow);
         std::mem::drop(borrow);
 
-        Ok(
-            if let Some(complete) = perform_op(bounds, node, steps)? {
-                Some(complete)
-            } else {
-                None
-            },
-        )
+        Ok(perform_op(bounds, node, steps)?)
     }
 }
 
@@ -143,12 +152,22 @@ mod tests {
             "x + 5 - 5",
             TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
         );
- 
+
         simplify_test(
             "x - 5 + 5",
             TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
-        );       
-        
+        );
+
+        simplify_test(
+            "(2*x)/(2*x)",
+            TreeNodeRef::one(),
+        );
+
+        simplify_test(
+            "2*x/2",
+            TreeNodeRef::new_val(MathToken::variable(String::from("x"))),
+        );
+
         // simplify_test(
         //     "2*x + x",
         //     TreeNodeRef::new_vals(

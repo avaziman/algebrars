@@ -37,6 +37,7 @@ pub enum OperationToken {
     RParent,
 }
 
+// i think a simple match function will evaluate to this too
 pub const OPPOSITE_OPERATOR: [OperationToken; 6] = [
     OperationToken::Subtract,
     OperationToken::Add,
@@ -92,6 +93,13 @@ impl OperationToken {
         match self {
             OperationToken::LParent | OperationToken::RParent => true,
             _ => false,
+        }
+    }
+
+    pub fn is_mul_or_div(&self) -> bool{
+        match self {
+            OperationToken::Multiply | OperationToken::Divide => true,
+            _ => false
         }
     }
 

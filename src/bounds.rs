@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{function::function::Function, math_tree::TreeNodeRef};
+use crate::math_tree::TreeNodeRef;
 
 // constraints
 

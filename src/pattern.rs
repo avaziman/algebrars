@@ -32,8 +32,8 @@ impl MathTree {
                 if let Some(op2) = check_node.val().operation {
                     let b1 = check_node.borrow();
                     let b2= pattern_node.borrow();
-                    let iter1 = b1.operand_iter();
-                    let iter2 = b2.operand_iter();
+                    let iter1 = b1.operands().iter_order();
+                    let iter2 = b2.operands().iter_order();
                     // operation type must match
                     op == op2 &&
                     // operands length must match
@@ -65,6 +65,7 @@ mod tests {
     use std::collections::HashMap;
 
     use rust_decimal_macros::dec;
+    use pretty_assertions::assert_eq;
 
     use crate::{math_tree::{MathTree, TreeNodeRef}, MathToken};
 

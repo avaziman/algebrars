@@ -21,7 +21,7 @@ impl MathTree {
     fn to_latex_node(node: TreeNodeRef, res: &mut String) {
         let borrow = node.borrow();
 
-        let mut childs = borrow.operand_iter();
+        let mut childs = borrow.display_iter();
         // Self::token_to_latex(childs.next().unwrap().1, res);
         if !node.val().is_operator() {
             Self::token_to_latex(&node, res);

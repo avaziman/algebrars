@@ -34,11 +34,11 @@ type OperandIt<'a> = Map<slab::Iter<'a, usize>, fn((usize, &usize)) -> OperandPo
 
 pub type OperandsIt<'a> = Chain<Chain<OperandIt<'a>, OperandIt<'a>>, OperandIt<'a>>;
 
-impl std::fmt::Debug for Operands {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.nodes.iter().map(|(_, (x, _))| x).collect_vec().fmt(f)
-    }
-}
+// impl std::fmt::Debug for Operands {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         self.nodes.iter().map(|(_, (x, _))| x).collect_vec().fmt(f)
+//     }
+// }
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct OperandPos(usize);
@@ -125,10 +125,6 @@ impl Operands {
         self.constants()
             .chain(self.variables())
             .chain(self.operators())
-    }
-
-    pub fn iter_mul_pos<'a>(&'a self) -> Map<slab::Iter<(TreeNodeRef, usize)>, impl FnMut((usize, &'a (TreeNodeRef, usize))) -> OperandPos>  {
-        self.nodes.iter().map(|(x, _)| OperandPos(x))
     }
 
     pub fn iter_order<'a>(

@@ -1,10 +1,14 @@
 use std::ops::RangeBounds;
 
+use itertools::Itertools;
 use rust_decimal::{Decimal, MathematicalOps};
 use rust_decimal_macros::dec;
 
 use crate::{
-    bounds::Bound, math_tree::{MathTree, TreeNodeRef, VarBounds}, stepper::{Step, Steps}, MathToken, OperationToken
+    bounds::Bound,
+    math_tree::{MathTree, TreeNodeRef, VarBounds},
+    stepper::{Step, Steps},
+    MathToken, OperationToken,
 };
 
 // the operands are checked against these scenarios as they usually result in a different behavior and explanation
@@ -69,42 +73,41 @@ pub fn perform_op(
         panic!("Not operation")
     };
 
-    let mut borrow = node.borrow_mut();
     // let operands = &mut borrow.operands;
     // let mut operands_iter = operands.iter().enumerate();
     // for arity 2 only
 
     let do_op = get_op(&op);
-    let mut remaining = Vec::new();
+    // let mut remaining = Vec::new();
     let orderless = op.info().orderless;
-    loop {
-        if borrow.operands().len() < 2 {
-            break;
-        }
+    let mut skip = 0;
 
-        let a = borrow.operands_mut().pop_front(orderless).unwrap();
-        let b = borrow.operands_mut().pop_front(orderless).unwrap();
+    // println!("{:#?}", borrow.operand_iter().skip(skip).collect_vec());
+    loop {
+        let borrow = node.borrow();
+        let Some(((a_pos, a), (b_pos, b))) =
+            borrow.calculate_iter().skip(skip).tuple_windows().next()
+        else {
+            break;
+        };
+        let (a, b) = (a.clone(), b.clone());
+        // println!("OP {:#?} {:#?} B {:#?}", op, a, b);
+        std::mem::drop(borrow);
 
         let desc = get_description(&a, &b, orderless);
-        let step = Step::PerformOp(desc.clone());
+        // let step = Step::PerformOp(desc.clone());
+
         if let Some(res) = do_op(&a, &b, desc, bounds)? {
-            steps.step((&a, &b), &res, step);
-            // a = res.clone();
-            borrow.add_operand(res);
+            // steps.step((&a, &b), &res, step);
+            node.borrow_mut().operands_result(a_pos, b_pos, res);
         } else {
-            remaining.push(b);
-            remaining.push(a);
+            skip += 1;
         }
     }
 
-    for r in remaining {
-        borrow.operands_mut().push(r);
-    }
-
-    Ok(if borrow.operands().len() == 1 {
+    Ok(if node.borrow().operands().len() == 1 {
         // TODO: clean
-        let val = borrow.operands_mut().pop_front(true).unwrap();
-        std::mem::drop(borrow);
+        let val = node.borrow_mut().operands_mut().pop_front(true).unwrap();
         // replacing can only be done through operands as it may change token type
         // operation is complete, this is the single result
         Some(val)
@@ -114,7 +117,6 @@ pub fn perform_op(
         None
     })
 }
-// Self::perform_op(&mut op);
 
 fn get_op(
     op: &OperationToken,
@@ -199,7 +201,7 @@ fn get_op(
             }
         }
         OperationToken::Divide => {
-            |_a: &TreeNodeRef, b, desc, bounds| {
+            |a: &TreeNodeRef, b, desc, bounds| {
                 if let Some(var) = b.val().variable {
                     // can't divide by zero!
                     let var_bounds = bounds.entry(var).or_insert(Vec::new());
@@ -215,7 +217,15 @@ fn get_op(
                     Some(OpDescription::ByZero(_)) => panic!(),
                     // x / 1 = x
                     Some(OpDescription::ByOne(x)) => Some(x),
-                    _ => None,
+                    _ => {
+                        // if a.val().constant
+                        // x / 2 = 1/2 * x
+                        // if b.val().operation != Some(OperationToken::Divide) {
+                        //     Some(a.multiply(TreeNodeRef::one().divide(b.clone())))
+                        // } else {
+                            None
+                        // }
+                    }
                 })
             }
         }
@@ -313,3 +323,11 @@ impl Pow for Decimal {
         self.powd(b)
     }
 }
+
+// const OPERATION_ARRAY = [
+//     // both constants
+//     [|a, b, op| perform_op_constant(a, b, op)],
+
+//     [],
+//     []
+// ];

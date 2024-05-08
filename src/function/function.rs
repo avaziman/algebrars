@@ -77,7 +77,7 @@ impl Function {
     ) {
         let borrow = node.borrow();
 
-        for (_, opr) in borrow.operand_iter() {
+        for (_, opr) in borrow.calculate_iter() {
             Self::scan_variables_node(opr, variables);
         }
 

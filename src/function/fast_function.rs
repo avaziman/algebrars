@@ -16,6 +16,7 @@ use wasm_bindgen::prelude::*;
 use super::function::Function;
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariableVal {
     pub var: String,
     pub val: f64,
@@ -56,7 +57,7 @@ type FastRpn = SmallVec<[FastFunctionMathToken; 32]>;
 // inspired by https://github.com/bertiqwerty/exmex/
 // an efficient interface for calculating bulk function points uses, f64 instead of decimal and requires all variables to be given values resulting in numbers only (not expressions)
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
-struct FastFunction {
+pub struct FastFunction {
     rpn: FastRpn,
     // positions to replace with var name
     replace: HashMap<String, Vec<usize>>,
@@ -76,7 +77,7 @@ impl MathTree {
         rpn: &mut FastRpn,
         variables: &mut HashMap<String, Vec<usize>>,
     ) {
-        for (_, operand) in node.borrow().operand_iter() {
+        for (_, operand) in node.borrow().calculate_iter() {
             Self::to_fast_rpn_node(operand, rpn, variables);
         }
 
@@ -105,24 +106,6 @@ impl FastFunction {
         // already simplified
         // let mut instructions = Instructions::new();
         let (rpn, replace) = f.simplified.to_fast_rpn();
-
-        // for token in rpn.into_iter() {
-        //     match token.kind {
-        //         MathTokenType::Constant => operands.push(token.constant.unwrap().to_f64().unwrap()),
-        //         MathTokenType::Variable => {
-        //             let var = token.variable.unwrap();
-        //             if let Some(c) = CONSTANTS_MAP.get(var.as_str()) {
-        //                 operands.push(c.to_f64().unwrap());
-        //             } else {
-        //                 let entry = replace.entry(var).or_insert(vec![]);
-        //                 entry.push(operands.len());
-
-        //                 operands.push(0.0);
-        //             }
-        //         }
-        //         MathTokenType::Operator => operators.push(token.operation.unwrap()),
-        //     }
-        // }
 
         Ok(Self { rpn, replace })
     }

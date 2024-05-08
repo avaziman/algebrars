@@ -1,5 +1,6 @@
-use std::{cell::RefCell, collections::HashMap, ops::Index, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, f32::consts::E, ops::Index, rc::Rc};
 
+use itertools::Itertools;
 use rust_decimal::Decimal;
 use rust_decimal_macros::dec;
 use serde::{Deserialize, Serialize};
@@ -9,12 +10,12 @@ use wasm_bindgen::prelude::*;
 use crate::{
     bounds::Bound,
     lexer::Lexer,
-    operands::{OperandPos, Operands},
+    operands::{OperandPos, Operands, OperandsIt},
     MathToken, MathTokenType, OperationToken,
 };
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TreeNode {
     val: MathToken,
     // pub childs: Vec<TreeNodeRef>, // left: Option<TreeNodeRef>,
@@ -40,6 +41,18 @@ impl Index<OperandPos> for TreeNode {
 impl PartialEq for TreeNodeRef {
     fn eq(&self, other: &TreeNodeRef) -> bool {
         self.borrow().val == other.borrow().val && self.borrow().operands == other.borrow().operands
+    }
+}
+
+impl std::fmt::Debug for TreeNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TreeNode")
+            .field("val", &self.val)
+            .field(
+                "operands",
+                &self.calculate_iter().map(|x| x.1).collect_vec(),
+            )
+            .finish()
     }
 }
 
@@ -138,34 +151,68 @@ impl TreeNode {
         }
     }
 
-    pub fn replace_operand(&mut self, op_pos: OperandPos, with: TreeNodeRef) {
+    pub fn replace_operand(&mut self, op_pos: OperandPos, with: TreeNodeRef) -> bool {
         if self.try_merge(&with) {
             self.operands.remove(op_pos);
-        }else {
+            true
+        } else {
             self.operands.replace_val(op_pos, with);
+            false
+        }
+    }
+
+    pub fn operands_result(&mut self, a: OperandPos, b: OperandPos, res: TreeNodeRef) {
+        self.operands.remove(a);
+        self.operands.remove(b);
+        self.add_operand(res);
+    }
+
+    pub fn remove_operand(&mut self, pos: OperandPos) {
+        self.operands.remove(pos);
+        if self.operands.is_empty() {
+            // operation cancels out
+            self.operands.push(match self.val.operation.unwrap() {
+                OperationToken::Add | OperationToken::Subtract => TreeNodeRef::zero(),
+                OperationToken::Multiply | OperationToken::Divide => TreeNodeRef::one(),
+                _ => unreachable!(),
+            })
         }
     }
 
     // #[wasm_bindgen(getter)]
     pub fn operands(&self) -> &Operands {
         &self.operands
-
     }
-pub fn operands_mut(&mut self) -> &mut Operands {
+    pub fn operands_mut(&mut self) -> &mut Operands {
         &mut self.operands
     }
 }
 
 impl TreeNode {
-    pub fn operand_iter<'a>(
+    pub fn calculate_iter<'a>(
         &'a self,
     ) -> Box<dyn Iterator<Item = (OperandPos, &'a TreeNodeRef)> + 'a> {
-        if self.val == MathToken::operator(OperationToken::Multiply) {
-            let iter = self.operands.iter_mul();
-            Box::new(iter.map(|pos| (pos, &self.operands[pos])))
-        } else {
-            Box::new(self.operands.iter_order())
+        if let Some(op) = self.val.operation {
+            if op.info().orderless {
+                // constants first
+                let iter = self.operands.iter_mul();
+                return Box::new(iter.map(|pos| (pos, &self.operands[pos])));
+            }
         }
+        Box::new(self.operands.iter_order())
+    }
+
+    pub fn display_iter<'a>(
+        &'a self,
+    ) -> Box<dyn Iterator<Item = (OperandPos, &'a TreeNodeRef)> + 'a> {
+        if Some(OperationToken::Multiply) == self.val.operation {
+            let iter = self.operands.iter_mul();
+            return Box::new(iter.map(|pos| (pos, &self.operands[pos])));
+        }
+        // operators then variables then constants
+        // let iter = self.operands.iter();
+        // return Box::new(iter.map(|pos| (pos, &self.operands[pos])));
+        Box::new(self.operands.iter_order())
     }
 }
 pub type VarBounds = HashMap<String, Vec<Bound>>;

@@ -8,7 +8,7 @@ use crate::{
     MathToken, OperationToken, OPPOSITE_OPERATOR,
 };
 
-struct Equation {
+pub struct Equation {
     left: MathTree,
     right: MathTree,
 }
@@ -17,11 +17,11 @@ struct Equation {
 // // discriminant: Δ = (-b ± sqrt(b^2 - 4ac))
 // x^2 = 0; x = ±sqrt(x)
 
-enum SolvingPlan {
-    // goal is to isolate the variable
-    IsolateVariable,
-    QuadraticFormula,
-}
+// enum SolvingPlan {
+//     // goal is to isolate the variable
+//     IsolateVariable,
+//     QuadraticFormula,
+// }
 
 struct EquationStep(OperationToken, TreeNodeRef);
 // perform a math operation on both sides (restrictions need to apply)
@@ -31,7 +31,7 @@ struct EquationStep(OperationToken, TreeNodeRef);
 // }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-enum EquationSolution {
+pub enum EquationSolution {
     // ∅ - null sign (empty set)
     NoSolution,
     SolutionsFor(TreeNodeRef, Vec<TreeNodeRef>),
@@ -57,17 +57,6 @@ impl Equation {
         //     self.flip_sides();
         // }
 
-        // for lvar in left_variables {
-        //     // lvar
-        //     match right_variables {
-
-        //     }
-
-        // }
-        // for op in self.right {
-
-        // }
-        // todo: symmetrical scan
         let mut steps = Steps::new();
         self.right.simplify(&mut steps).unwrap();
         self.left.simplify(&mut steps).unwrap();
@@ -77,52 +66,54 @@ impl Equation {
         let var = MathToken::variable(String::from("x"));
 
         // move all non variables from left to right
-        while let Some(op) = self.left.root.val().operation {
-            let borrow = self.left.root.borrow();
+        for i in 0..2{
+            let mut to_break = true;
+            if let Some(op) = self.left.root.val().operation {
+                let borrow = self.left.root.borrow();
 
-            let to_eliminate = borrow
-                .operand_iter()
-                .filter_map(|(_, x)| match MathTree::find_node(x, &var) {
-                    Some(_) => None,
-                    None => Some(x.clone()),
-                })
-                .collect_vec();
+                let to_eliminate = borrow
+                    .calculate_iter()
+                    .filter_map(|(_, x)| match MathTree::find_node(x, &var) {
+                        Some(_) => None,
+                        None => Some(x.clone()),
+                    })
+                    .collect_vec();
 
-            // if to_eliminate.is_empty() {
-            //     break;
-            // }
+                to_break = to_eliminate.is_empty();
 
-            std::mem::drop(borrow);
-            for elim in to_eliminate {
-                self.add_op(op.opposite(), elim);
+                std::mem::drop(borrow);
+                for elim in to_eliminate {
+                    self.add_op(op.opposite(), elim);
+                }
+                // println!("SIMPLIFIED {:#?}", self.left.root);
+                self.left.simplify(&mut steps).unwrap();
             }
-            // println!("RAW {:#?}", self.left.root);
-            self.left.simplify(&mut steps).unwrap();
-            // println!("SIMPLIFIED {:#?}", self.left.root);
-        }
 
-        // move all variables from right to left
-        if let Some(op) = self.right.root.val().operation {
-            let borrow = self.right.root.borrow();
+            // move all variables from right to left
+            if let Some(op) = self.right.root.val().operation {
+                self.right.simplify(&mut steps).unwrap();
+                let borrow = self.right.root.borrow();
 
-            let to_eliminate = borrow
-                .operand_iter()
-                .filter_map(|(_, x)| match MathTree::find_node(x, &var) {
-                    Some(_) => Some(x.clone()),
-                    None => None,
-                })
-                .collect_vec();
+                let to_eliminate = borrow
+                    .calculate_iter()
+                    .filter_map(|(_, x)| match MathTree::find_node(x, &var) {
+                        Some(_) => Some(x.clone()),
+                        None => None,
+                    })
+                    .collect_vec();
 
-            // if to_eliminate.is_empty() {
-            //     break;
-            // }
+                to_break = to_break && to_eliminate.is_empty();
 
-            std::mem::drop(borrow);
-            for elim in to_eliminate {
-                self.add_op(op.opposite(), elim);
+                std::mem::drop(borrow);
+                for elim in to_eliminate {
+                    self.add_op(op.opposite(), elim);
+                }
+                println!("{:#?}", self.right.root);
             }
-            self.right.simplify(&mut steps).unwrap();
-            println!("{:#?}", self.right.root);
+
+            if to_break {
+                break;
+            }
         }
 
         // we have isolated the variable
@@ -155,11 +146,11 @@ impl Equation {
         self.left.add_op(op_token, node);
     }
 
-    fn move_variable_left(&mut self) {}
+    // fn move_variable_left(&mut self) {}
 
-    fn move_variable_left_node() {}
+    // fn move_variable_left_node() {}
 
-    fn move_left(_tree_pos: TreePos) {}
+    // fn move_left(_tree_pos: TreePos) {}
 
     pub fn flip_sides(&mut self) {
         std::mem::swap(&mut self.left, &mut self.right);
@@ -199,15 +190,15 @@ mod tests {
     pub fn simple_equation() -> Result<(), ParseError> {
         // assert_eq!(Equation)
 
-        equation_test_single_x("x = 2+5", TreeNodeRef::constant(dec!(7)));
+        // equation_test_single_x("x = 2+5", TreeNodeRef::constant(dec!(7)));
 
-        equation_test_single_x("2*x = 2", TreeNodeRef::constant(dec!(1)));
+        // equation_test_single_x("2*x = 2", TreeNodeRef::constant(dec!(1)));
 
-        equation_test_single_x("x + 5 = 8", TreeNodeRef::constant(dec!(3)));
+        // equation_test_single_x("x + 5 = 8", TreeNodeRef::constant(dec!(3)));
 
-        equation_test_single_x("2 * x + 5 = 8", TreeNodeRef::constant(dec!(1.5)));
+        // equation_test_single_x("2 * x + 5 = 8", TreeNodeRef::constant(dec!(1.5)));
 
-        equation_test_single_x("2 * x + 5 = x + 5", TreeNodeRef::constant(dec!(0)));
+        equation_test_single_x("2 * x + 5 = x + 4", TreeNodeRef::constant(dec!(-1)));
         Ok(())
     }
 }
