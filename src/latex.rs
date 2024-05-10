@@ -17,8 +17,17 @@ impl MathTree {
     }
 }
 
+impl TreeNodeRef {
+    pub fn to_latex(&self) -> String {
+        let mut res = String::new();
+
+        MathTree::to_latex_node(self.clone(), &mut res);
+        res
+    }
+}
+
 impl MathTree {
-    fn to_latex_node(node: TreeNodeRef, res: &mut String) {
+    pub fn to_latex_node(node: TreeNodeRef, res: &mut String) {
         let borrow = node.borrow();
 
         let mut childs = borrow.display_iter();

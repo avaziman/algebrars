@@ -30,6 +30,12 @@ pub struct TreeNode {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct TreeNodeRef(Rc<RefCell<TreeNode>>);
 
+impl std::hash::Hash for TreeNodeRef {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // To_L self.borrow();
+    }
+}
+
 impl Index<OperandPos> for TreeNode {
     type Output = TreeNodeRef;
 

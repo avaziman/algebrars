@@ -3,7 +3,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    arithmatic::OperationError,
+    arithmatic::arithmatic::OperationError,
     math_tree::{MathTree, TreeNodeRef},
     operands::OperandPos,
     stepper::Steps,
@@ -71,6 +71,7 @@ impl Function {
         Self::scan_variables_node(root, &mut variables);
         variables
     }
+
     fn scan_variables_node(
         node: &TreeNodeRef,
         variables: &mut Vec<(TreeNodeRef, Option<OperandPos>)>,
@@ -94,7 +95,7 @@ impl Function {
 #[cfg(test)]
 mod tests {
     use crate::{
-        arithmatic::OperationError,
+        arithmatic::arithmatic::OperationError,
         math_tree::{MathTree, TreeNodeRef},
     };
     use pretty_assertions::assert_eq;

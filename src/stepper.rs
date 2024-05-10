@@ -3,10 +3,7 @@
 //      allow software to recite its steps and also be translatable to understandable human algebra rules
 // every modification of the MathTree requires a STEP to explain it
 
-use crate::{
-    arithmatic::OpDescription,
-    math_tree::{TreeNodeRef},
-};
+use crate::{arithmatic::arithmatic::OpDescription, math_tree::TreeNodeRef};
 
 type NodePos = Vec<usize>;
 
@@ -23,20 +20,24 @@ impl Steps {
     pub fn new() -> Self {
         Self(Vec::new())
     }
-    pub fn step(&mut self, _operands: (&TreeNodeRef, &TreeNodeRef), _res: &TreeNodeRef, step: Step) {
+    pub fn step(
+        &mut self,
+        _operands: (&TreeNodeRef, &TreeNodeRef),
+        _res: &TreeNodeRef,
+        step: Step,
+    ) {
         self.0.push(step);
     }
 }
 
 #[cfg(test)]
 pub mod tests {
-    
 
     use crate::{
-        arithmatic::OperationError, math_tree::{MathTree, TreeNodeRef}, stepper::Steps
+        arithmatic::arithmatic::OperationError,
+        math_tree::{MathTree, TreeNodeRef},
+        stepper::Steps,
     };
-
-    
 
     // fn steps_from_it(it: impl Iterator<Item = Step>) -> Steps {
     //     let steps = Steps::new();
@@ -57,6 +58,6 @@ pub mod tests {
 
     #[test]
     fn steps() {
-        // steps_test("1 + 2", TreeNodeRef::constant(dec!(3)), Steps::new()); 
+        // steps_test("1 + 2", TreeNodeRef::constant(dec!(3)), Steps::new());
     }
 }

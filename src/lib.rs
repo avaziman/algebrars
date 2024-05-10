@@ -38,14 +38,14 @@ pub enum OperationToken {
 }
 
 // i think a simple match function will evaluate to this too
-pub const OPPOSITE_OPERATOR: [OperationToken; 6] = [
-    OperationToken::Subtract,
-    OperationToken::Add,
-    OperationToken::Divide,
-    OperationToken::Multiply,
-    OperationToken::Root,
-    OperationToken::Pow,
-];
+// pub const OPPOSITE_OPERATOR: [OperationToken; 6] = [
+//     OperationToken::Subtract,
+//     OperationToken::Add,
+//     OperationToken::Divide,
+//     OperationToken::Multiply,
+//     OperationToken::Root,
+//     OperationToken::Pow,
+// ];
 
 pub struct OperatorInfo {
     // how many operands
@@ -104,7 +104,16 @@ impl OperationToken {
     }
 
     pub fn opposite(&self) -> OperationToken {
-        OPPOSITE_OPERATOR[*self as usize]
+        // OPPOSITE_OPERATOR[*self as usize]
+        match self {
+            OperationToken::Add => OperationToken::Subtract,
+            OperationToken::Subtract => OperationToken::Add,
+            OperationToken::Multiply => OperationToken::Divide,
+            OperationToken::Divide => OperationToken::Multiply,
+            OperationToken::Pow => OperationToken::Root,
+            OperationToken::Root => OperationToken::Pow, 
+        _ => unreachable!()
+        }
     }
 }
 

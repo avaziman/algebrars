@@ -5,10 +5,7 @@ use rust_decimal::{Decimal, MathematicalOps};
 use rust_decimal_macros::dec;
 
 use crate::{
-    bounds::Bound,
-    math_tree::{MathTree, TreeNodeRef, VarBounds},
-    stepper::{Step, Steps},
-    MathToken, OperationToken,
+    bounds::Bound, factorization, math_tree::{MathTree, TreeNodeRef, VarBounds}, stepper::{Step, Steps}, MathToken, OperationToken
 };
 
 // the operands are checked against these scenarios as they usually result in a different behavior and explanation
@@ -224,7 +221,6 @@ fn get_op(
                         //     Some(a.multiply(TreeNodeRef::one().divide(b.clone())))
                         // } else {
                             None
-                        // }
                     }
                 })
             }

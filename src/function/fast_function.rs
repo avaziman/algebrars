@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    arithmatic::{perform_op_constant, OperationError},
+    arithmatic::arithmatic::{perform_op_constant, OperationError},
     constants::CONSTANTS_MAP,
     lexer::Lexer,
     math_tree::{MathTree, ParseError, TreeNodeRef},
