@@ -46,7 +46,12 @@ impl Index<OperandPos> for TreeNode {
 
 impl PartialEq for TreeNodeRef {
     fn eq(&self, other: &TreeNodeRef) -> bool {
-        self.borrow().val == other.borrow().val && self.borrow().operands == other.borrow().operands
+        let other_borrow = other.borrow();
+        self.borrow().val == other_borrow.val
+            && self
+                .borrow()
+                .calculate_iter()
+                .eq(other_borrow.calculate_iter())
     }
 }
 
@@ -104,6 +109,10 @@ impl TreeNodeRef {
 }
 
 impl TreeNodeRef {
+    pub(crate) fn parse(str: &str) -> Self {
+        MathTree::parse(str).unwrap().root
+    }
+
     pub fn replace(&self, new: TreeNodeRef) {
         self.0.replace(new.borrow().clone());
     }
@@ -221,7 +230,7 @@ impl TreeNode {
         Box::new(self.operands.iter_order())
     }
 }
-pub type VarBounds = HashMap<String, Vec<Bound>>;
+pub type VarBounds = HashMap<Rc<String>, Vec<Bound>>;
 
 // abstract syntax tree
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]

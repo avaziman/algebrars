@@ -1,6 +1,5 @@
-use std::str::FromStr;
+use std::{collections::HashMap, rc::Rc, str::FromStr};
 
-use bimap::BiMap;
 use rust_decimal::Decimal;
 
 use crate::{MathToken, OperationToken};
@@ -10,23 +9,12 @@ pub struct Lexer {
     pub(crate) tokens: Vec<MathToken>,
 }
 
-lazy_static::lazy_static! {
-    /// This is an example for using doc comment attributes
-    pub static ref OPERATOR_MAP: BiMap<char, MathToken> = bimap::BiMap::from_iter(vec![
-        ('+' , MathToken::operator(OperationToken::Add)),
-        ('-' , MathToken::operator(OperationToken::Subtract)),
-        ('/' , MathToken::operator(OperationToken::Divide)),
-        ('*' , MathToken::operator(OperationToken::Multiply)),
-        ('^' , MathToken::operator(OperationToken::Pow)),
-        ('(' , MathToken::operator(OperationToken::LParent)),
-        (')' , MathToken::operator(OperationToken::RParent)),
-    ]);
-}
-
 impl Lexer {
     pub fn new(str: &str) -> Self {
         let mut chars = str.char_indices().peekable();
         let mut tokens = Vec::new();
+        let mut variables: HashMap<&str, Rc<String>> = HashMap::new();
+
         while let Some((i, c)) = chars.next() {
             let token = match c {
                 c if c.is_whitespace() => continue,
@@ -45,10 +33,21 @@ impl Lexer {
                     while chars.next_if(|(_, c)| c.is_alphanumeric()).is_some() {
                         str_stop += 1;
                     }
-                    MathToken::variable(str[i..str_stop].to_string())
+
+                    let var = &str[i..str_stop];
+                    // avoid allocating same variable string twice
+                    MathToken::variable(match variables.get(var) {
+                        Some(v) => v.clone(),
+                        None => {
+                            let rc = Rc::new(var.to_string());
+                            let rc2 = rc.clone();
+                            variables.insert(var, rc);
+                            rc2
+                        }
+                    })
                 }
-                _ => match OPERATOR_MAP.get_by_left(&c) {
-                    Some(s) => s.clone(),
+                _ => match OperationToken::from_char(c) {
+                    Some(s) => MathToken::operator(s.clone()),
                     None => panic!("Unhandled char {}", c),
                 },
             };
@@ -86,12 +85,11 @@ mod tests {
                 MathToken::constant(dec!(2)),
                 MathToken::operator(OperationToken::Multiply),
                 MathToken::operator(OperationToken::LParent),
-                MathToken::variable("x".to_string()),
+                MathToken::variable("x".to_string().into()),
                 MathToken::operator(OperationToken::Add),
                 MathToken::constant(dec!(1)),
                 MathToken::operator(OperationToken::RParent),
             ]
         );
-        
     }
 }

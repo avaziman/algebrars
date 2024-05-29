@@ -26,7 +26,6 @@ dependencies = [
 name = "algebrars"
 version = "0.1.0"
 dependencies = [
- "bimap",
  "criterion",
  "itertools 0.12.1",
  "lazy_static",
@@ -35,6 +34,7 @@ dependencies = [
  "rust_decimal_macros",
  "serde",
  "serde-wasm-bindgen",
+ "serde_json",
  "slab",
  "smallvec",
  "wasm-bindgen",
@@ -63,12 +63,6 @@ name = "autocfg"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
-
-[[package]]
-name = "bimap"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "230c5f1ca6a325a32553f8640d31ac9b49f2411e901e427570154868b46da4f7"
 
 [[package]]
 name = "bitvec"

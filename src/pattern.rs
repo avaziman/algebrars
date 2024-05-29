@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     math_tree::{MathTree, TreeNodeRef}, MathTokenType,
@@ -7,7 +7,7 @@ use crate::{
 impl MathTree {
     // checks if a given expression matches a given pattern with variables,
     // returns the nodes in the given tree that match the gives variables
-    pub fn like(node: &TreeNodeRef, pattern: &str) -> Option<HashMap<String, TreeNodeRef>> {
+    pub fn like(node: &TreeNodeRef, pattern: &str) -> Option<HashMap<Rc<String>, TreeNodeRef>> {
         let mut variables = HashMap::new();
         let pattern = MathTree::parse(pattern).unwrap();
 
@@ -21,7 +21,7 @@ impl MathTree {
     fn node_like(
         check_node: &TreeNodeRef,
         pattern_node: &TreeNodeRef,
-        variables: &mut HashMap<String, TreeNodeRef>,
+        variables: &mut HashMap<Rc<String>, TreeNodeRef>,
     ) -> bool {
         let val = pattern_node.val();
         match val.kind {
@@ -79,7 +79,7 @@ mod tests {
 
         
         assert_eq!(MathTree::like(&MathTree::parse("(x + 2)^2").unwrap().root, "(a + b)^2"), Some(HashMap::from([
-            ("a".to_string(), TreeNodeRef::new_val(MathToken::variable(String::from("x")))),
+            ("a".to_string(), TreeNodeRef::new_val(MathToken::variable(String::from("x").into()))),
             ("b".to_string(), TreeNodeRef::constant(dec!(2))),
         ])));
 

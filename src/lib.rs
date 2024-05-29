@@ -15,6 +15,9 @@ pub mod pattern;
 mod rewriting_rules;
 pub mod simplify;
 pub mod stepper;
+pub mod math_json;
+
+use std::rc::Rc;
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
@@ -96,10 +99,10 @@ impl OperationToken {
         }
     }
 
-    pub fn is_mul_or_div(&self) -> bool{
+    pub fn is_mul_or_div(&self) -> bool {
         match self {
             OperationToken::Multiply | OperationToken::Divide => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -111,8 +114,34 @@ impl OperationToken {
             OperationToken::Multiply => OperationToken::Divide,
             OperationToken::Divide => OperationToken::Multiply,
             OperationToken::Pow => OperationToken::Root,
-            OperationToken::Root => OperationToken::Pow, 
-        _ => unreachable!()
+            OperationToken::Root => OperationToken::Pow,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn from_char(c: char) -> Option<OperationToken> {
+        Some(match c {
+            '+' => OperationToken::Add,
+            '-' => OperationToken::Subtract,
+            '/' => OperationToken::Divide,
+            '*' => OperationToken::Multiply,
+            '^' => OperationToken::Pow,
+            '(' => OperationToken::LParent,
+            ')' => OperationToken::RParent,
+            _ => return None,
+        })
+    }
+
+    pub fn to_char(&self) -> char {
+        match self {
+            OperationToken::Add => '+',
+            OperationToken::Subtract => '-',
+            OperationToken::Divide => '/',
+            OperationToken::Multiply => '*',
+            OperationToken::Pow => '^',
+            OperationToken::LParent => '(',
+            OperationToken::RParent => ')',
+            OperationToken::Root => todo!(),
         }
     }
 }
@@ -126,7 +155,7 @@ pub struct MathToken {
     pub kind: MathTokenType,
     pub constant: Option<Decimal>,
     // #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
-    pub variable: Option<String>,
+    pub variable: Option<Rc<String>>,
     pub operation: Option<OperationToken>,
 }
 
@@ -177,7 +206,7 @@ impl MathToken {
         }
     }
 
-    pub fn variable(s: String) -> Self {
+    pub fn variable(s: Rc<String>) -> Self {
         Self {
             kind: MathTokenType::Variable,
             constant: None,

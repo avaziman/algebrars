@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     arithmatic::arithmatic::{perform_op_constant, OperationError},
@@ -60,11 +60,11 @@ type FastRpn = SmallVec<[FastFunctionMathToken; 32]>;
 pub struct FastFunction {
     rpn: FastRpn,
     // positions to replace with var name
-    replace: HashMap<String, Vec<usize>>,
+    replace: HashMap<Rc<String>, Vec<usize>>,
 }
 
 impl MathTree {
-    pub fn to_fast_rpn(&self) -> (FastRpn, HashMap<String, Vec<usize>>) {
+    pub fn to_fast_rpn(&self) -> (FastRpn, HashMap<Rc<String>, Vec<usize>>) {
         let mut rpn = FastRpn::new();
         let mut variables = HashMap::new();
 
@@ -75,7 +75,7 @@ impl MathTree {
     fn to_fast_rpn_node(
         node: &TreeNodeRef,
         rpn: &mut FastRpn,
-        variables: &mut HashMap<String, Vec<usize>>,
+        variables: &mut HashMap<Rc<String>, Vec<usize>>,
     ) {
         for (_, operand) in node.borrow().calculate_iter() {
             Self::to_fast_rpn_node(operand, rpn, variables);
@@ -116,7 +116,8 @@ impl FastFunction {
         // values: HashMap<String, f64>,
         values: Vec<VariableVal>,
     ) -> Result<Option<f64>, OperationError> {
-        let values = HashMap::<String, f64>::from_iter(values.into_iter().map(|x| (x.var, x.val)));
+        let values =
+            HashMap::<Rc<String>, f64>::from_iter(values.into_iter().map(|x| (x.var.into(), x.val)));
 
         // just replace the variables and execute the instructions
         for (var, indexes) in &self.replace {

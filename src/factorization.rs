@@ -36,38 +36,31 @@ impl MathTree {
         //     return None;
         // }
 
-        let mut constants = BTreeSet::new();
+        let mut multipliers =  node.borrow().calculate_iter().map(|x| x.1.clone()).collect_vec();
 
-        let mut multipliers = Vec::with_capacity(node.borrow().operands().len());
-
-        for (_, operand) in node.borrow().calculate_iter() {
-            let val = operand.val();
-            multipliers.push(operand.clone());
-            match operand.val().kind {
-                MathTokenType::Constant => {
-                    constants.insert(val.constant.unwrap());
-                }
-                MathTokenType::Variable | MathTokenType::Operator => {
-                    // multipliers.push(operand.clone())
-                }
-            }
-        }
-
-        // let mut common =
-        //     Self::find_common_factor_constant(constants).map(|d| TreeNodeRef::constant(d));
-        let mut common: Option<TreeNodeRef> = None;
-
-        if let Some(common_var) = Self::find_common_variable(multipliers) {
-            if let Some(cmn) = common {
-                common = Some(cmn.multiply(common_var));
-            } else {
-                common = Some(common_var);
-            }
-        }
-
-        common
+        Self::find_common_variable(multipliers)
     }
 
+    fn get_constant_multiplier(node: TreeNodeRef) -> (Decimal, TreeNodeRef) {
+        if node.val().operation == Some(OperationToken::Multiply) {
+            let borrow = node.borrow();
+            let mut iter = borrow.calculate_iter().map(|x| x.1.clone());
+
+            let constant = iter.next().unwrap().val().constant.unwrap();
+
+            // remaining variables
+            let mut childs = iter.collect_vec();
+            let multiplier = if childs.len() == 1 {
+                childs.pop().unwrap()
+            } else {
+                TreeNodeRef::new_vals(MathToken::operator(OperationToken::Multiply), childs)
+            };
+
+            (constant, multiplier)
+        } else {
+            (Decimal::ONE, node)
+        }
+    }
     // (x, x^2) common: x
     // (sqrt(x), x): common sqrt(x) = x^(1/2)
     // (x^x, x^(x/2)): common x^(x/2)
@@ -76,10 +69,20 @@ impl MathTree {
     //   => common x^(x*find_common(1, 1/2, 1/3)) =
     // ((x+3)^2 + (x+3)^3): common (x+3)^2
     // TODO: option to only factor N (one) item at a time
-    fn find_common_variable(variables: Vec<TreeNodeRef>) -> Option<TreeNodeRef> {
+    pub(crate) fn find_common_variable(variables: Vec<TreeNodeRef>) -> Option<TreeNodeRef> {
         // let mut sorted: HashMap<TreeNodeRef, BTreeMap<TreeNodeRef, TreeNodeRef>> = HashMap::new();
-        let variables = variables.into_iter().map(|x| power::get_node_as_power(x));
-        let mut bases = variables.map(|(base, _)| base);
+        let mut constants = BTreeSet::new();
+        let variables = variables
+            .into_iter()
+            .map(|x| {
+                let (constant_multiplier, node) = Self::get_constant_multiplier(x);
+                constants.insert(constant_multiplier);
+
+                power::get_node_as_power(node)
+            })
+            .collect_vec();
+
+        let mut bases = variables.iter().map(|(base, _)| base);
         let base = bases
             .clone()
             .min_by_key(|a| a.borrow().operands().len())
@@ -100,14 +103,22 @@ impl MathTree {
                     }
                 }
         };
+
+        let constant_multiplier =
+            Self::find_common_factor_constant(constants).map(|d| TreeNodeRef::constant(d));
+
         // common bases
         // a base is common if all operands have it
         if bases.all(|n| is_multiple_of(&n, &base)) {
+            if let Some(constant) = constant_multiplier {
+                return Some(constant.multiply(base.clone()));
+            }
+
             return Some(base.clone());
         }
         // for (base, power) in variables {}
 
-        None
+        constant_multiplier
     }
 
     fn find_common_factor_constant(mut constants: BTreeSet<Decimal>) -> Option<Decimal> {
@@ -162,7 +173,12 @@ impl MathTree {
 mod tests {
     use rust_decimal_macros::dec;
 
-    use crate::{math_tree::MathTree, simplify::simplify};
+    use crate::{
+        math_tree::{MathTree, TreeNodeRef},
+        simplify::simplify,
+        MathToken,
+    };
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn common_multiplier_constant() {
@@ -182,6 +198,11 @@ mod tests {
         );
 
         assert_eq!(
+            MathTree::find_common_factor_constant([dec!(2), dec!(-2)].into()),
+            Some(dec!(-2))
+        );
+
+        assert_eq!(
             MathTree::find_common_factor_constant([dec!(4), dec!(6)].into()),
             Some(dec!(2))
         );
@@ -198,7 +219,27 @@ mod tests {
     }
 
     #[test]
+    fn find_common_factor() {
+        assert_eq!(
+            MathTree::find_common_variable(vec![
+                TreeNodeRef::parse("2*x"),
+                TreeNodeRef::parse("4*x"),
+            ]),
+            Some(TreeNodeRef::parse("2*x")),
+        );
+
+        assert_eq!(
+            MathTree::find_common_variable(vec![
+                TreeNodeRef::parse("-2*x"),
+                TreeNodeRef::parse("2*x"),
+            ]),
+            Some(TreeNodeRef::parse("2*x")),
+        );
+    }
+
+    #[test]
     fn factorize_x() {
-        simplify::tests::simplify_test_latex("(-2*x)+(-1)+(2*x)", "-1");
+        // simplify::tests::simplify_test_latex("x + 2 * x", "3x");
+        simplify::tests::simplify_test_latex("(-2*x)+(2*x)", "0");
     }
 }

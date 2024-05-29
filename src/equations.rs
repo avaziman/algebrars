@@ -63,11 +63,11 @@ impl Equation {
         let left_variables = Function::scan_variables(&self.left.root);
         let right_variables = Function::scan_variables(&self.right.root);
 
-        let var = MathToken::variable(String::from("x"));
+        let var = MathToken::variable(String::from("x").into());
 
         // move all non variables from left to right
-        for _ in 0..2 {
-        // loop {
+        // for _ in 0..2 {
+        loop {
             let mut to_eliminate = Vec::new();
             if let Some(op) = self.left.root.val().operation {
                 let borrow = self.left.root.borrow();
@@ -133,6 +133,7 @@ impl Equation {
                 self.left.root.clone(),
                 vec![self.right.root.clone()],
             );
+    
         // }
 
         // eliminate variables from right
