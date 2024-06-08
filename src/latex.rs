@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     math_tree::{MathTree, TreeNodeRef},
-    MathTokenType, OperationToken,
+    MathToken, OperationToken,
 };
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -35,7 +35,7 @@ impl MathTree {
 
         let mut childs = borrow.display_iter();
         // Self::token_to_latex(childs.next().unwrap().1, res);
-        let Some(operator) = node.val().operation else {
+        let MathToken::Operation(operator) = node.val() else {
             Self::token_to_latex(&node, res, precedence);
             return;
         };
@@ -50,8 +50,8 @@ impl MathTree {
         for (_, child1) in childs {
             // multiply anything except (constant and constant) requires no sign
             if !multiply
-                || (last_child.val().kind == MathTokenType::Constant
-                    && child1.val().kind == MathTokenType::Constant)
+                || (last_child.val().kind == MathToken::Constant
+                    && child1.val().kind == MathToken::Constant)
             {
                 res.push(node.val().operation.unwrap().to_char());
             }
@@ -63,7 +63,7 @@ impl MathTree {
     fn token_to_latex(child: &TreeNodeRef, res: &mut String, upper_precedence: i8) {
         let val = child.val();
         match val.kind {
-            MathTokenType::Constant => {
+            MathToken::Constant => {
                 let cnst = &val.constant.unwrap();
                 // if cnst.is_sign_negative() {
                 //     res.push('(');
@@ -73,8 +73,8 @@ impl MathTree {
                 //     res.push_str(&cnst.to_string());
                 // }
             }
-            MathTokenType::Variable => res.push_str(&val.variable.unwrap()),
-            MathTokenType::Operator => {
+            MathToken::Variable => res.push_str(&val.variable.unwrap()),
+            MathToken::Operator => {
                 let op = val.operation.unwrap();
                 let precedence = op.info().precedence;
                 let parenthesize = precedence <= upper_precedence;

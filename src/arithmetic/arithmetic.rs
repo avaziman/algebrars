@@ -22,8 +22,8 @@ pub enum OpDescription {
 }
 
 pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef, orderless: bool) -> Option<OpDescription> {
-    if let Some(c2) = b.val().constant {
-        if let Some(c1) = a.val().constant {
+    if let MathToken::Constant(c2) = b.val() {
+        if let MathToken::Constant(c1) = a.val() {
             return Some(OpDescription::BothConstants(c1, c2));
         }
 
@@ -37,7 +37,7 @@ pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef, orderless: bool) -> Opt
     }
 
     if orderless {
-        if let Some(c1) = a.val().constant {
+        if let MathToken::Constant(c1) = a.val() {
             if c1 == Decimal::ZERO {
                 return Some(OpDescription::ByZero(b.clone()));
             } else if c1 == Decimal::ONE {
@@ -60,13 +60,15 @@ pub fn get_description(a: &TreeNodeRef, b: &TreeNodeRef, orderless: bool) -> Opt
 pub enum OperationError {
     Overflow,
 }
-
+// +
+// (1, 1), x
+ 
 pub fn perform_op(
     bounds: &mut VarBounds,
     node: &mut TreeNodeRef,
     steps: &mut Steps,
 ) -> Result<Option<TreeNodeRef>, OperationError> {
-    let Some(op) = node.val().operation else {
+    let MathToken::Operation(op) = node.val() else {
         panic!("Not operation")
     };
 
@@ -156,7 +158,7 @@ fn get_op(
                     _ => {
                         // -(-x) = x
                         // 0-x = -x = -1 * x
-                        if MathToken::constant(Decimal::ZERO) == a.val() {
+                        if MathToken::Constant(Decimal::ZERO) == a.val() {
                             return Ok(Some(b.multiply(TreeNodeRef::constant(dec!(-1)))));
                         } else {
                             return Ok(Some(
@@ -199,7 +201,7 @@ fn get_op(
         }
         OperationToken::Divide => {
             |a: &TreeNodeRef, b, desc, bounds| {
-                if let Some(var) = b.val().variable {
+                if let MathToken::Variable(var) = b.val() {
                     // can't divide by zero!
                     let var_bounds = bounds.entry(var).or_insert(Vec::new());
                     var_bounds.push(Bound::not_equal(TreeNodeRef::zero()))
@@ -280,7 +282,7 @@ pub fn perform_op_constant<
 
 impl TreeNodeRef {
     pub(crate) fn op(&self, op_token: OperationToken, node: TreeNodeRef) -> Self {
-        TreeNodeRef::new_vals(MathToken::operator(op_token), vec![self.clone(), node])
+        TreeNodeRef::new_vals(MathToken::Operation(op_token), vec![self.clone(), node])
     }
 
     pub fn add(&self, node: TreeNodeRef) -> TreeNodeRef {

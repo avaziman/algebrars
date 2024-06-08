@@ -4,7 +4,7 @@ use crate::{
     factorization,
     math_tree::{MathTree, TreeNodeRef},
     operands::OperandPos,
-    MathTokenType, OperationToken,
+    MathToken, OperationToken,
 };
 
 pub fn symmetrical_scan(node: TreeNodeRef) {

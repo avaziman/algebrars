@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    math_tree::{MathTree, TreeNodeRef}, MathTokenType,
+    math_tree::{MathTree, TreeNodeRef}, MathToken
 };
 
 impl MathTree {
@@ -24,12 +24,11 @@ impl MathTree {
         variables: &mut HashMap<Rc<String>, TreeNodeRef>,
     ) -> bool {
         let val = pattern_node.val();
-        match val.kind {
+        match val{
             // constants must match exactly
-            MathTokenType::Constant => check_node == pattern_node,
-            MathTokenType::Operator => {
-                let op = val.operation.unwrap();
-                if let Some(op2) = check_node.val().operation {
+            MathToken::Constant(check_node) => check_node == pattern_node,
+            MathToken::Operation(op) => {
+                if let MathToken::Operation(op2) = check_node.val() {
                     let b1 = check_node.borrow();
                     let b2= pattern_node.borrow();
                     let iter1 = b1.operands().iter_order();
@@ -45,9 +44,8 @@ impl MathTree {
                     false
                 }
             }
-            MathTokenType::Variable => {
+            MathToken::Variable(v) => {
                 // pattern expects a variable
-                let v = val.variable.unwrap();
                 match variables.get(&v) {
                     // if we saw that variable before, we expect it to be identical
                     Some(x) =>  x == check_node,
@@ -72,16 +70,16 @@ mod tests {
     #[test]
     fn like_test() {
         assert_eq!(MathTree::like(&MathTree::parse("2^3*2^4").unwrap().root, "x^m*x^n"), Some(HashMap::from([
-            ("x".to_string(), TreeNodeRef::constant(dec!(2))),
-            ("m".to_string(), TreeNodeRef::constant(dec!(3))),
-            ("n".to_string(), TreeNodeRef::constant(dec!(4))),
+            ("x".to_string().into(), TreeNodeRef::constant(dec!(2))),
+            ("m".to_string().into(), TreeNodeRef::constant(dec!(3))),
+            ("n".to_string().into(), TreeNodeRef::constant(dec!(4))),
         ])));
 
         
         assert_eq!(MathTree::like(&MathTree::parse("(x + 2)^2").unwrap().root, "(a + b)^2"), Some(HashMap::from([
-            ("a".to_string(), TreeNodeRef::new_val(MathToken::variable(String::from("x").into()))),
-            ("b".to_string(), TreeNodeRef::constant(dec!(2))),
-        ])));
-
+            ("a".to_string().into(), TreeNodeRef::new_val(MathToken::Variable(String::from("x").into()))),
+            ("b".to_string().into(), TreeNodeRef::constant(dec!(2))),
+            ])));
+            
     }
 }

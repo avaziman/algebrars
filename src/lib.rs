@@ -16,6 +16,7 @@ mod rewriting_rules;
 pub mod simplify;
 pub mod stepper;
 pub mod math_json;
+pub mod magnitude;
 
 use std::rc::Rc;
 
@@ -146,43 +147,26 @@ impl OperationToken {
     }
 }
 
-// struct MathTokenType
+// struct MathToken
 // pub struct ShortString([char; 16]);
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct MathToken {
-    pub kind: MathTokenType,
-    pub constant: Option<Decimal>,
-    // #[cfg_attr(target_arch = "wasm32", wasm_bindgen(getter_with_clone))]
-    pub variable: Option<Rc<String>>,
-    pub operation: Option<OperationToken>,
+pub enum MathToken{
+    Constant(Decimal),
+    Variable(Rc<String>),
+    Operation(OperationToken)
 }
 
 impl std::fmt::Debug for MathToken {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.kind {
-            MathTokenType::Constant => write!(f, "{}", self.constant.unwrap()),
-            MathTokenType::Variable => write!(f, "{}", self.variable.as_ref().unwrap()),
-            MathTokenType::Operator => write!(f, "{:?}", self.operation.unwrap()),
+        match self {
+            MathToken::Constant(c) => write!(f, "{}", c),
+            MathToken::Variable(v) => write!(f, "{}", v),
+            MathToken::Operation(op) => write!(f, "{:?}", op),
         }
     }
 }
-
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum MathTokenType {
-    Constant,
-    Variable,
-    Operator,
-}
-// #[derive(Debug, PartialEq, Eq, Hash, Clone, Serialize, Deserialize)]
-// pub enum MathToken {
-//     // #[wasm_bindgen(skip)]
-//     Constant(Decimal),
-//     Variable(String),
-//     Op(OperationToken),
-// }
 
 // impl MathToken {
 //     pub fn is_operator(&self) -> bool {
@@ -195,41 +179,15 @@ pub enum MathTokenType {
 // }
 
 impl MathToken {
-    // pub fn kind(&self) -> MathTokenType {
+    // pub fn kind(&self) -> MathToken {
     //     self.kind
     // }
 
     pub fn is_operator(&self) -> bool {
-        match self.kind {
-            MathTokenType::Operator => true,
+        match self {
+            MathToken::Operation(_) => true,
             _ => false,
         }
     }
 
-    pub fn variable(s: Rc<String>) -> Self {
-        Self {
-            kind: MathTokenType::Variable,
-            constant: None,
-            variable: Some(s),
-            operation: None,
-        }
-    }
-
-    pub fn constant(d: Decimal) -> Self {
-        Self {
-            kind: MathTokenType::Constant,
-            constant: Some(d),
-            variable: None,
-            operation: None,
-        }
-    }
-
-    pub fn operator(o: OperationToken) -> Self {
-        Self {
-            kind: MathTokenType::Operator,
-            constant: None,
-            variable: None,
-            operation: Some(o),
-        }
-    }
 }

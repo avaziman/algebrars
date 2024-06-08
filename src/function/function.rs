@@ -7,7 +7,7 @@ use crate::{
     math_tree::{MathTree, TreeNodeRef},
     operands::OperandPos,
     stepper::Steps,
-    MathTokenType,
+    MathToken,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -62,11 +62,11 @@ impl Function {
 }
 
 impl Function {
-    pub(crate) fn scan_variables(root: &TreeNodeRef) -> Vec<(TreeNodeRef, Option<OperandPos>)> {
-        let mut variables = Vec::new();
-        // Just X or some variable, unique case
-        if root.val().kind == MathTokenType::Variable {
-            variables.push((root.clone(), None));
+pub(crate) fn scan_variables(root: &TreeNodeRef) -> Vec<(TreeNodeRef, Option<OperandPos>)> {
+    let mut variables = Vec::new();
+    // Just X or some variable, unique case
+    if let MathToken::Variable(_) = root.val() {
+        variables.push((root.clone(), None));
         }
         Self::scan_variables_node(root, &mut variables);
         variables

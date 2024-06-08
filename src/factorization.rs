@@ -7,7 +7,7 @@ use rust_decimal_macros::dec;
 use crate::{
     arithmatic::power,
     math_tree::{MathTree, TreeNode, TreeNodeRef},
-    MathToken, MathTokenType, OperationToken,
+    MathToken, OperationToken,
 };
 
 impl MathTree {
@@ -22,7 +22,7 @@ impl MathTree {
             .map(|(_, node)| node.divide(factor.clone()))
             .collect_vec();
 
-        let factored = TreeNodeRef::new_vals(MathToken::operator(OperationToken::Add), childs);
+        let factored = TreeNodeRef::new_vals(MathToken::Operation(OperationToken::Add), childs);
 
         Some(factored.multiply(factor))
     }
@@ -42,7 +42,7 @@ impl MathTree {
     }
 
     fn get_constant_multiplier(node: TreeNodeRef) -> (Decimal, TreeNodeRef) {
-        if node.val().operation == Some(OperationToken::Multiply) {
+        if node.val() == MathToken::Operation(OperationToken::Multiply) {
             let borrow = node.borrow();
             let mut iter = borrow.calculate_iter().map(|x| x.1.clone());
 
@@ -53,7 +53,7 @@ impl MathTree {
             let multiplier = if childs.len() == 1 {
                 childs.pop().unwrap()
             } else {
-                TreeNodeRef::new_vals(MathToken::operator(OperationToken::Multiply), childs)
+                TreeNodeRef::new_vals(MathToken::Operation(OperationToken::Multiply), childs)
             };
 
             (constant, multiplier)
@@ -92,13 +92,13 @@ impl MathTree {
         let is_multiple_of = |node: &TreeNodeRef, of: &TreeNodeRef| {
             let val = node.val();
             node == of
-                || match val.kind {
-                    MathTokenType::Constant => {
-                        val.constant.unwrap() * dec!(-1) == of.val().constant.unwrap()
+                || match val {
+                    MathToken::Constant(c) => {
+                        c * dec!(-1) == of.val().constant.unwrap()
                     }
-                    MathTokenType::Variable => false,
-                    MathTokenType::Operator => {
-                        val == MathToken::operator(OperationToken::Multiply)
+                    MathToken::Variable => false,
+                    MathToken::Operator => {
+                        val == MathToken::Operation(OperationToken::Multiply)
                             && node.borrow().calculate_iter().any(|(_, n)| n == of)
                     }
                 }

@@ -63,13 +63,13 @@ impl Equation {
         let left_variables = Function::scan_variables(&self.left.root);
         let right_variables = Function::scan_variables(&self.right.root);
 
-        let var = MathToken::variable(String::from("x").into());
+        let var = MathToken::Variable(String::from("x").into());
 
         // move all non variables from left to right
         // for _ in 0..2 {
         loop {
             let mut to_eliminate = Vec::new();
-            if let Some(op) = self.left.root.val().operation {
+            if let MathToken::Operation(op) = self.left.root.val() {
                 let borrow = self.left.root.borrow();
 
                 to_eliminate.push((
@@ -87,7 +87,7 @@ impl Equation {
             }
 
             // move all variables from right to left
-            if let Some(op) = self.right.root.val().operation {
+            if let MathToken::Operation(op) = self.right.root.val() {
                 self.right.simplify(&mut steps).unwrap();
                 let borrow = self.right.root.borrow();
 
@@ -187,7 +187,7 @@ mod tests {
         equation_test(
             equation,
             EquationSolution::SolutionsFor(
-                TreeNodeRef::new_val(MathToken::variable("x".to_string())),
+                TreeNodeRef::new_val(MathToken::Variable("x".to_string().into())),
                 vec![res],
             ),
         );

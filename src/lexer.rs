@@ -26,7 +26,7 @@ impl Lexer {
                     {
                         str_stop += 1;
                     }
-                    MathToken::constant(Decimal::from_str(&str[i..str_stop]).unwrap())
+                    MathToken::Constant(Decimal::from_str(&str[i..str_stop]).unwrap())
                 }
                 c if c.is_alphabetic() => {
                     let mut str_stop = i + 1;
@@ -36,7 +36,7 @@ impl Lexer {
 
                     let var = &str[i..str_stop];
                     // avoid allocating same variable string twice
-                    MathToken::variable(match variables.get(var) {
+                    MathToken::Variable(match variables.get(var) {
                         Some(v) => v.clone(),
                         None => {
                             let rc = Rc::new(var.to_string());
@@ -47,7 +47,7 @@ impl Lexer {
                     })
                 }
                 _ => match OperationToken::from_char(c) {
-                    Some(s) => MathToken::operator(s.clone()),
+                    Some(s) => MathToken::Operation(s.clone()),
                     None => panic!("Unhandled char {}", c),
                 },
             };
@@ -70,9 +70,9 @@ mod tests {
         assert_eq!(
             Lexer::new("2 * x").tokens,
             vec![
-                MathToken::constant(dec!(2)),
-                MathToken::operator(OperationToken::Multiply),
-                MathToken::variable("x".to_string())
+                MathToken::Constant(dec!(2)),
+                MathToken::Operation(OperationToken::Multiply),
+                MathToken::Variable("x".to_string().into())
             ]
         );
     }
@@ -82,13 +82,13 @@ mod tests {
         assert_eq!(
             Lexer::new("2 * (x + 1)").tokens,
             vec![
-                MathToken::constant(dec!(2)),
-                MathToken::operator(OperationToken::Multiply),
-                MathToken::operator(OperationToken::LParent),
-                MathToken::variable("x".to_string().into()),
-                MathToken::operator(OperationToken::Add),
-                MathToken::constant(dec!(1)),
-                MathToken::operator(OperationToken::RParent),
+                MathToken::Constant(dec!(2)),
+                MathToken::Operation(OperationToken::Multiply),
+                MathToken::Operation(OperationToken::LParent),
+                MathToken::Variable("x".to_string().into()),
+                MathToken::Operation(OperationToken::Add),
+                MathToken::Constant(dec!(1)),
+                MathToken::Operation(OperationToken::RParent),
             ]
         );
     }

@@ -8,6 +8,7 @@ use crate::{
     math_tree::{MathTree, TreeNodeRef, VarBounds},
     stepper::Steps,
     OperationToken,
+    MathToken,
 };
 
 use super::symmetry::symmetrical_scan;
@@ -34,12 +35,12 @@ impl MathTree {
         // let node = &mut self.root;
         let val = node.val();
 
-        if !val.is_operator() {
+        let MathToken::Operation(op_token) = val else {
             return Ok(None);
-        }
+        };
         
 
-        if val.operation == Some(OperationToken::Divide) {
+        if val == MathToken::Operation(OperationToken::Divide) {
             symmetrical_scan(node.clone());
         } 
         // flatten
@@ -70,14 +71,20 @@ impl MathTree {
                     skip -= 1;
                 }
                 borrow.replace_operand(op_pos, complete);
-                std::mem::drop(borrow);
+                
+                // node is operator and both operators equal
+                if complete.val() == node.val() && op_token.info().orderless {
+                    borrow.operands().push(complete.operands().clone());
+                }
+                    
+                    std::mem::drop(borrow);
                 return Self::simplify_node(node, steps, bounds);
             }
         }
         
         // inject constants
         // for v in borrow.operands.variables().collect_vec() {
-            //     // if val.kind == MathTokenType::Variable {
+            //     // if val.kind == MathToken::Variable {
                 //     let val = borrow[v].val();
 
         //     let var = val.variable.as_ref().unwrap();
@@ -87,7 +94,7 @@ impl MathTree {
             //     // }
             // }
             std::mem::drop(borrow);
-            if val.operation == Some(OperationToken::Add) {
+            if val == MathToken::Operation(OperationToken::Add) {
                 if let Some(factored) = MathTree::factorize_node(node.clone()) {
                     println!("{} FACTORED TO {}", node.to_latex(), factored.to_latex());
                     return Ok(Some(factored));
@@ -147,14 +154,14 @@ pub(crate) mod tests {
     fn simplify_x() {
         simplify_test(
             "1*x",
-            TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
         );
 
         simplify_test("0*x", TreeNodeRef::constant(dec!(0)));
 
         simplify_test(
             "0 + x",
-            TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
         );
 
         // TODO: !!
@@ -171,28 +178,28 @@ pub(crate) mod tests {
 
         simplify_test(
             "x + 5 - 5",
-            TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
         );
 
         simplify_test(
             "x - 5 + 5",
-            TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
         );
 
         simplify_test("(2*x)/(2*x)", TreeNodeRef::one());
 
         simplify_test(
             "2*x/2",
-            TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
         );
 
         simplify_test(
             "2*x + x",
             TreeNodeRef::new_vals(
-                MathToken::operator(OperationToken::Multiply),
+                MathToken::Operation(OperationToken::Multiply),
                 vec![
                     TreeNodeRef::constant(dec!(3)),
-                    TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+                    TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
                 ],
             ),
         );
@@ -202,15 +209,15 @@ pub(crate) mod tests {
     fn zero_and_double_add_subs() {
         simplify_test(
             "+x",
-            TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
         );
 
         simplify_test(
             "-x",
             TreeNodeRef::new_vals(
-                MathToken::operator(OperationToken::Multiply),
+                MathToken::Operation(OperationToken::Multiply),
                 vec![
-                    TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+                    TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
                     TreeNodeRef::constant(dec!(-1)),
                 ],
             ),
@@ -218,12 +225,12 @@ pub(crate) mod tests {
 
         simplify_test(
             "+(+x)",
-            TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
         );
 
         simplify_test(
             "-(-x)",
-            TreeNodeRef::new_val(MathToken::variable(String::from("x").into())),
+            TreeNodeRef::new_val(MathToken::Variable(String::from("x").into())),
         );
 
         simplify_test("-(-2)", TreeNodeRef::constant(dec!(2)));
